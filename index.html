@@ -1,0 +1,1445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Milani · Reza Milani</title>
+<meta name="description" content="Record your voice or upload a song and get a music video with subtitles for X, Instagram and TikTok. Free, made on your device.">
+<meta property="og:title" content="Milani — your voice, as a video">
+<meta property="og:description" content="Record or upload. Pick a template. Add subtitles. Share anywhere.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='11' fill='%2300506a'/%3E%3Ccircle cx='12.5' cy='22' r='2.6' fill='%23fff'/%3E%3Crect x='18' y='16' width='4' height='12' rx='2' fill='%23fff'/%3E%3Crect x='25' y='10' width='4' height='20' rx='2' fill='%23fff'/%3E%3C/svg%3E">
+<!-- fonts are self-hosted (vendor/fonts, OFL) so they work offline and on filtered networks -->
+<link rel="stylesheet" href="vendor/fonts.css">
+<style>
+/* Layout: preview on the left (sticky on wide screens), one tool panel at a time on the right — like the Wavegram editor toolbar. */
+:root {
+  --paper: #ece6df; --card: #f7f3ee; --ink: #15252c; --soft: #5b6a70; --line: #d5cdc4;
+  --teal: #00506a; --teal-ink: #ffffff; --coral: #e2614f; --well: #e1d9d0;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Helvetica Neue", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #0f191d; --card: #16242a; --ink: #eee8e1; --soft: #97a6ab; --line: #2a3a40;
+  --teal: #6cc0d6; --teal-ink: #0b1418; --coral: #f07d6c; --well: #1d2d33; color-scheme: dark; } }
+:root[data-theme="dark"] { --paper: #0f191d; --card: #16242a; --ink: #eee8e1; --soft: #97a6ab; --line: #2a3a40;
+  --teal: #6cc0d6; --teal-ink: #0b1418; --coral: #f07d6c; --well: #1d2d33; color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font: 400 15px/1.5 var(--body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: max(14px, env(safe-area-inset-top, 0px)) max(28px, env(safe-area-inset-bottom, 0px)); }
+.wrap { max-width: 1140px; margin: 0 auto; }
+header { display: flex; align-items: center; gap: 12px; padding-block: 6px 16px; }
+/* the founder's handwritten signature (brand/signature.svg, one currentColor path) in the UI ink colour, light and dark */
+.sig { margin: 0; height: 46px; aspect-ratio: 504 / 132; background: var(--ink); -webkit-mask: url(brand/signature.svg) no-repeat left center / contain; mask: url(brand/signature.svg) no-repeat left center / contain; }
+.sig .sigImg { display: none; }
+@supports not ((mask: url(x)) or (-webkit-mask: url(x))) { .sig { background: none; } .sig .sigImg { display: block; height: 100%; width: auto; } } /* fallback: the transparent PNG */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sig .sigImg { filter: invert(1); } }
+@media (max-width: 600px) { .sig { height: 34px; } }
+.tagline { color: var(--soft); font-size: 13.5px; margin-left: auto; text-align: right; line-height: 1.35; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+@media (min-width: 920px) { .app { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 32px; align-items: start; }
+  .stage { position: sticky; top: max(14px, env(safe-area-inset-top, 0px)); } }
+.stage { display: grid; gap: 10px; }
+.screen { position: relative; display: grid; place-items: center; background: var(--well); border-radius: 18px; padding: 14px; min-height: 260px; }
+.screen canvas { display: block; max-width: 100%; max-height: min(64vh, 620px); width: auto; height: auto; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,.18); }
+.play { position: absolute; left: 22px; bottom: 22px; width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--ink); color: var(--paper); display: grid; place-items: center; cursor: pointer; }
+.play svg { width: 20px; height: 20px; }
+.gen { position: absolute; right: 22px; top: 22px; height: 48px; padding: 0 20px 0 16px; border-radius: 26px; border: 0; background: var(--coral); color: #fff; display: inline-flex; align-items: center; gap: 8px; font: 700 15px/1 var(--body); cursor: pointer; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
+.gen svg, .btn.generate svg { width: 20px; height: 20px; }
+.gen[disabled], .btn.generate[disabled] { opacity: .6; cursor: progress; }
+.btn.generate { background: var(--coral); border-color: var(--coral); color: #fff; font-size: 16px; padding: 13px 22px; }
+.meta { color: var(--soft); font-size: 13px; font-variant-numeric: tabular-nums; text-align: center; min-height: 20px; }
+.panel { display: grid; gap: 20px; min-width: 0; }
+section { display: grid; gap: 10px; min-width: 0; }
+h2 { font: 600 12px/1 var(--body); letter-spacing: .09em; text-transform: uppercase; color: var(--soft); margin: 0; }
+h3 { font: 600 13px/1.2 var(--body); margin: 4px 0 0; color: var(--soft); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.btn { appearance: none; border: 1.5px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 10px 17px; font: 600 14.5px/1 var(--body); cursor: pointer; display: inline-flex; align-items: center; gap: 9px; text-decoration: none; }
+.btn:hover { border-color: var(--soft); }
+:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.btn.rec { background: var(--rec); border-color: var(--rec); color: var(--rec-ink); }
+.btn.rec .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--rec-ink); }
+.btn.rec.on .dot { border-radius: 2px; animation: blink 1s infinite; }
+@keyframes blink { 50% { opacity: .35; } }
+.btn.primary { background: var(--teal); border-color: var(--teal); color: var(--teal-ink); font-size: 17px; padding: 15px 26px; justify-content: center; }
+.btn.small { padding: 7px 12px; font-size: 13px; }
+.btn[disabled] { opacity: .5; cursor: default; }
+.btn svg { width: 18px; height: 18px; }
+.sound { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sound canvas { flex: 1; min-width: 0; height: 34px; width: 100%; }
+.sound .name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46%; }
+.trim, .slider { display: grid; gap: 4px; font-size: 13px; color: var(--soft); }
+input[type=range] { width: 100%; accent-color: var(--teal); }
+/* editor toolbar */
+.tools { display: flex; gap: 6px; overflow-x: auto; padding: 4px; background: var(--card); border: 1.5px solid var(--line); border-radius: 16px; scrollbar-width: none; }
+.tools button { appearance: none; border: 0; background: none; color: var(--ink); border-radius: 12px; padding: 8px 10px; display: grid; justify-items: center; gap: 3px; font: 500 12px/1 var(--body); cursor: pointer; min-width: 64px; flex: 1 0 auto; }
+.tools button svg { width: 22px; height: 22px; }
+.tools button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+.tools .dice { color: var(--coral); }
+.pane { display: grid; gap: 12px; background: var(--card); border: 1.5px solid var(--line); border-radius: 16px; padding: 14px; min-width: 0; }
+.styles { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 9px; }
+.chip { appearance: none; border: 2px solid transparent; background: var(--paper); border-radius: 12px; padding: 6px 5px 7px; cursor: pointer; display: grid; gap: 5px; justify-items: center; color: var(--ink); font: 500 12px/1.1 var(--body); }
+.chip canvas { width: 100%; height: 84px; object-fit: contain; border-radius: 4px; }
+.chip[aria-pressed="true"] { border-color: var(--teal); }
+.artgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 9px; }
+.artgrid .chip img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 6px; display: block; background: var(--well); }
+.artgrid .chip span { text-align: center; line-height: 1.2; }
+.artgrid .chip small { color: var(--soft); font-size: 10.5px; }
+.artgrid .artcat { grid-column: 1 / -1; margin: 10px 2px 0; font-size: 12px; font-weight: 600; letter-spacing: .02em; color: var(--soft); }
+.artgrid .artcat:first-child { margin-top: 0; }
+.seg { display: inline-flex; background: var(--paper); border: 1.5px solid var(--line); border-radius: 999px; padding: 3px; flex-wrap: wrap; }
+.seg button { appearance: none; border: 0; background: none; color: var(--ink); padding: 7px 12px; border-radius: 999px; font: 500 13px/1 var(--body); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.fonts { display: flex; gap: 7px; flex-wrap: wrap; }
+.fonts button { appearance: none; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 10px; padding: 7px 11px; font-size: 16px; cursor: pointer; }
+.fonts button[aria-pressed="true"] { border-color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal); }
+.photo { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.avatar { width: 84px; height: 84px; border-radius: 50%; overflow: hidden; border: 1.5px solid var(--line); background: var(--paper); cursor: pointer; padding: 0; flex: none; }
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+label.f { display: grid; gap: 5px; font-size: 13px; color: var(--soft); min-width: 0; }
+input[type=text], textarea, select { font-size: 16px !important; width: 100%; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 10px; padding: 9px 11px; font: 400 15px/1.35 var(--body); }
+input[type=text], textarea { unicode-bidi: plaintext; }
+textarea { resize: vertical; min-height: 44px; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.swatches button { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--line); cursor: pointer; padding: 0; }
+.swatches button[aria-pressed="true"] { outline: 3px solid var(--teal); outline-offset: 2px; }
+.lines { display: grid; gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 2px; }
+.line { display: grid; grid-template-columns: 74px minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.line .tm { font: 500 12px/1.2 var(--body); color: var(--soft); font-variant-numeric: tabular-nums; padding-top: 11px; }
+.line button { min-width: 44px; min-height: 44px; appearance: none; border: 0; background: none; color: var(--soft); cursor: pointer; padding: 10px 4px; font-size: 16px; }
+.make { display: grid; gap: 10px; }
+.bar { height: 8px; background: var(--well); border-radius: 99px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--teal); transition: width .2s; }
+.result { display: grid; gap: 12px; background: var(--card); border: 1.5px solid var(--line); border-radius: 16px; padding: 14px; }
+.result video { width: 100%; max-height: 60vh; border-radius: 8px; background: #000; }
+.note { color: var(--soft); font-size: 13px; }
+.err { color: var(--coral); font-size: 14px; font-weight: 500; }
+footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--soft); font-size: 13px; display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+/* team A fixes: RTL file names, editable subtitle times, phone layout (preview stays in view, every tool visible) */
+.sound .name, #meta bdi { unicode-bidi: plaintext; }
+.line { grid-template-columns: 92px minmax(0, 1fr) auto; }
+.line .tm { display: grid; gap: 4px; padding-top: 2px; }
+.line .tm input { width: 100%; font: 500 12px/1.2 var(--body); padding: 5px 6px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-variant-numeric: tabular-nums; }
+.btn.cancel { justify-self: start; }
+/* round 2: photo slots, drag-to-move layout, speaker tags */
+.slotx { display: grid; gap: 6px; }
+.avatar.wide { border-radius: 14px; width: 110px; }
+.pill, .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: max(14px, env(safe-area-inset-bottom, 0px)); z-index: 20; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center;
+  max-width: calc(100vw - 24px); background: var(--ink); color: var(--paper); border-radius: 999px; padding: 8px 10px 8px 18px; font: 500 14px/1.3 var(--body); box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+.pill .btn, .toast .btn { background: var(--paper); color: var(--ink); border-color: transparent; }
+.toast { bottom: max(70px, calc(env(safe-area-inset-bottom, 0px) + 70px)); }
+.pillWarn { opacity: .85; font-size: 12.5px; }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--card); border: 1.5px solid var(--coral); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+.seg.mode { justify-self: start; }
+.mvArts { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
+.mvArts button { appearance: none; border: 2px solid transparent; border-radius: 10px; padding: 3px; background: var(--paper); cursor: pointer; display: grid; gap: 3px; font: 500 11px/1.15 var(--body); color: var(--ink); }
+.mvArts button[aria-pressed="true"] { border-color: var(--teal); }
+.mvArts img { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 6px; display: block; }
+.shots { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 4px; }
+.shots div { flex: none; display: grid; gap: 2px; font: 500 10.5px/1.1 var(--body); color: var(--soft); text-align: center; }
+.shots img { height: 52px; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 4px; border: 2px solid transparent; }
+.shots .now img { border-color: var(--coral); }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; }
+.presets button { appearance: none; display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 5px 10px 5px 6px; font: 500 12.5px/1 var(--body); cursor: pointer; }
+.presets button[aria-pressed="true"] { border-color: var(--teal); box-shadow: inset 0 0 0 1px var(--teal); }
+.presets i { width: 22px; height: 22px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.15); }
+#colorWarn button { margin-left: 8px; }
+.hiddenList { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: center; font-size: 13px; color: var(--soft); }
+.layoutRow { display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; min-height: 32px; }
+#preview { touch-action: none; cursor: grab; }
+#preview.dragging { cursor: grabbing; }
+.line .who { font: 500 12px/1.2 var(--body); padding: 4px; border: 1.5px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+.line .tm label { display: grid; gap: 1px; font-size: 10.5px; color: var(--soft); }
+@media (max-width: 919px) {
+  /* phones: only the preview itself stays in view (its note and layout buttons scroll with the page), and Play / Generate sit in a
+     strip under the picture, never over it, so they can't cover an item's × or handle */
+  .stage { display: contents; }
+  .screen { position: sticky; top: 0; z-index: 5; min-height: 0; padding: 8px 8px 6px; margin-inline: -4px; gap: 6px;
+    grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "cv cv cv" "play . gen"; box-shadow: 0 -8px 0 var(--paper); }
+  .screen canvas { grid-area: cv; max-height: 31vh; }
+  .play, .gen { position: static; grid-area: play; }
+  .play { width: 44px; height: 44px; }
+  .gen { grid-area: gen; height: 44px; padding: 0 16px 0 12px; box-shadow: none; }
+  .app > .meta, .app > .layoutRow { margin-top: -10px; }
+}
+@media (max-width: 919px) and (max-height: 640px) { .screen canvas { max-height: 27vh; } .play, .gen { height: 40px; } .play { width: 40px; } }
+/* phones on their side: preview left, tools right; Play / Generate beside the picture so it can use the full height */
+@media (max-width: 919px) and (orientation: landscape) and (max-height: 520px) {
+  .app { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; align-items: start; }
+  .stage { display: grid; position: sticky; top: 0; gap: 4px; z-index: 5; }
+  .screen { position: relative; grid-template-areas: "play cv gen"; align-items: end; box-shadow: none; }
+  .screen canvas { max-height: calc(100vh - 92px); }
+  .gen { width: 44px; padding: 0; justify-content: center; font-size: 0; gap: 0; }
+  .stage > .meta, .stage > .layoutRow { margin-top: 0; }
+}
+@media (pointer: coarse) { .btn { min-height: 44px; } .seg button { min-height: 40px; } } /* touch targets */
+@media (max-width: 600px) { .tools { flex-wrap: wrap; } .tools button { min-width: 0; flex: 1 0 22%; } }
+@media (prefers-reduced-motion: reduce) { .btn.rec.on .dot { animation: none; } .bar i { transition: none; } }
+/* Accessibility (WCAG AA): Record label ≥ 4.5:1 (light 5.5:1, dark 7:1); control borders ≥ 3:1 against the page and cards */
+:root { --rec: #b8412f; --rec-ink: #ffffff; --ctl: #80766c; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --rec: #f07d6c; --rec-ink: #0b1418; --ctl: #6f8086; } }
+:root[data-theme="dark"] { --rec: #f07d6c; --rec-ink: #0b1418; --ctl: #6f8086; }
+.btn, .seg, input[type=text], textarea, select, .fonts button, .presets button, .swatches button, .line .tm input, .line .who, .avatar { --line: var(--ctl); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 class="sig" role="img" aria-label="Reza Milani"><img class="sigImg" src="brand/signature.png" alt=""></h1>
+  </header>
+
+  <main class="app">
+    <div class="stage">
+      <div class="screen">
+        <canvas id="preview" aria-label="Live preview of your video"></canvas>
+        <button class="gen" id="genPreview" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Generate</button>
+        <button class="play" id="play" aria-label="Play preview"><svg viewBox="0 0 20 20"><path id="playIcon" d="M5 3l12 7-12 7z" fill="currentColor"/></svg></button>
+      </div>
+      <div class="meta" id="meta">Sample beat · press play to hear it</div>
+      <div class="layoutRow"><span class="note" id="layoutTip">Tip: tap anything on the preview to move, resize (corner) or hide it (×).</span><span class="vh" id="pvLive" aria-live="polite"></span><button class="btn small" id="resetLayout" hidden>Reset layout</button><span class="hiddenList" id="hiddenList" hidden></span></div>
+    </div>
+
+    <div class="panel">
+      <div class="seg mode" id="mode" role="group" aria-label="What are you making?"><button data-m="voice" aria-pressed="true">Voice video</button><button data-m="music" aria-pressed="false">Music video</button></div>
+      <section aria-labelledby="h-sound">
+        <h2 id="h-sound">1 · Your sound</h2>
+        <div class="row">
+          <button class="btn rec" id="rec"><span class="dot"></span><span id="recLabel">Record</span></button>
+          <button class="btn" id="upload"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 14V3M5 8l5-5 5 5M3 17h14"/></svg>Upload audio or video</button>
+          <input type="file" id="file" accept="audio/*,video/*" class="vh" tabindex="-1" aria-hidden="true">
+        </div>
+        <div class="sound"><span class="name" id="soundName">Sample beat</span><canvas id="wave"></canvas></div>
+        <div class="trim" id="trimBox" hidden><label for="trim">Start at <b id="trimVal">0:00</b> · videos use up to 5 minutes</label><input type="range" id="trim" min="0" max="0" step="0.5" value="0"></div>
+        <div class="note" id="xNote" hidden>X allows up to 2:20 without Premium.</div>
+        <div class="err" id="soundErr" role="alert" hidden></div>
+        <div id="audioC"></div><!-- Audio C: voice polish + trim silences, filled by audio/*.js -->
+      </section>
+
+      <section aria-labelledby="h-edit">
+        <h2 id="h-edit">2 · Make it yours</h2>
+        <div class="tools" role="tablist" aria-label="Editing tools">
+          <button role="tab" data-p="tpl" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>Template</button>
+          <button role="tab" data-p="mv" aria-selected="false" id="mvTab" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="5" height="14" rx="1"/><rect x="10" y="5" width="5" height="14" rx="1"/><rect x="17" y="5" width="4" height="14" rx="1"/></svg>Cuts</button>
+          <button role="tab" data-p="art" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3a9 9 0 100 18c1.1 0 1.6-.8 1.6-1.6 0-1-.9-1.4-.9-2.3 0-.9.7-1.6 1.6-1.6H17a4 4 0 004-4c0-4.4-4-8.5-9-8.5z"/><circle cx="7.5" cy="11" r="1.3" fill="currentColor"/><circle cx="10.5" cy="7" r="1.3" fill="currentColor"/><circle cx="15" cy="7.5" r="1.3" fill="currentColor"/></svg>Art</button>
+          <button role="tab" data-p="photo" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>Photo</button>
+          <button role="tab" data-p="text" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 6V4h14v2M12 4v16M9 20h6"/></svg>Text</button>
+          <button role="tab" data-p="subs" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 13h4M13 13h4M7 16h7"/></svg>Subtitles</button>
+          <button role="tab" data-p="color" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 4l6 6-8 8H6v-6z"/><path d="M4 21c1-2 3-3 3-3"/></svg>Colour</button>
+          <button role="tab" data-p="music" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>Music</button><!-- Background music -->
+          <button role="tab" data-p="quality" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10v4M7 12h3M10 10v4M14 10v4h2a2 2 0 002-2 2 2 0 00-2-2z"/></svg>Quality</button>
+          <button class="dice" id="dice" title="Surprise me"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.2" fill="currentColor"/><circle cx="15" cy="15" r="1.2" fill="currentColor"/><circle cx="15" cy="9" r="1.2" fill="currentColor"/><circle cx="9" cy="15" r="1.2" fill="currentColor"/></svg>Surprise</button>
+        </div>
+
+        <div class="pane" id="p-tpl" role="tabpanel">
+          <h3>Post</h3><div class="styles" data-group="post"></div>
+          <h3>Story</h3><div class="styles" data-group="story"></div>
+          <h3>YouTube</h3><div class="styles" data-group="wide"></div>
+          <h3>Or make your own</h3><div class="styles" data-group="wave"></div>
+          <div class="row" id="fmtRow">
+            <div class="seg" id="fmt" role="group" aria-label="Video shape"><button data-f="post" aria-pressed="true">Post 4:5</button><button data-f="square" aria-pressed="false">Square</button><button data-f="story" aria-pressed="false">Story 9:16</button><button data-f="wide" aria-pressed="false">Wide 16:9</button></div>
+          </div>
+        </div>
+
+        <div class="pane" id="p-art" role="tabpanel" hidden>
+          <div class="note">Use one of Reza Milani's hand-coded generative artworks as the picture of your template, in place of a photo. It moves with your sound.</div>
+          <div class="row"><button class="btn small" id="usePhoto">Use my photo instead</button></div>
+          <div class="artgrid" id="artGrid"></div>
+          <div class="row"><button class="btn generate" id="artSeed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Generate a new one</button><button class="btn small" id="artBack" disabled>Back</button><button class="btn small" id="artSeedReset">Original</button></div>
+          <div class="note">Every press of Generate draws a brand-new version of this artwork that nobody has seen before.</div>
+          <div class="note" id="artNote" role="status" aria-live="polite"></div>
+        </div>
+
+        <div class="pane" id="p-photo" role="tabpanel" hidden>
+          <div class="photo">
+            <button class="avatar" id="avatarBtn" aria-label="Choose the host photo"><img id="avatarImg" alt=""></button>
+            <div class="slotx"><b>Host</b> <span class="note">your photo</span>
+              <div class="row"><button class="btn small" id="avatarPick">Choose photo</button><button class="btn small" id="avatarReset">Use the sample</button></div></div>
+            <input type="file" id="avatarFile" accept="image/*" class="vh" tabindex="-1" aria-hidden="true">
+          </div>
+          <div class="photo">
+            <button class="avatar" id="guestBtn" aria-label="Choose the guest photo"><img id="guestImg" alt="" hidden></button>
+            <div class="slotx"><b>Guest</b> <span class="note">optional, for a second voice</span>
+              <div class="row"><button class="btn small" id="guestPick">Choose photo</button><button class="btn small" id="guestRemove" hidden>Remove</button></div></div>
+            <input type="file" id="guestFile" accept="image/*" class="vh" tabindex="-1" aria-hidden="true">
+          </div>
+          <div class="photo">
+            <button class="avatar wide" id="bgBtn" aria-label="Choose a background image"><img id="bgImg" alt="" hidden></button>
+            <div class="slotx"><b>Background</b> <span class="note">used when no artwork is picked</span>
+              <div class="row"><button class="btn small" id="bgPick">Choose image</button><button class="btn small" id="bgRemove" hidden>Remove</button></div></div>
+            <input type="file" id="bgFile" accept="image/*" class="vh" tabindex="-1" aria-hidden="true">
+          </div>
+          <div class="note" id="photoNote" role="status" aria-live="polite" hidden></div>
+          <div class="note">The host photo (and the guest's) has its own place in every template. A background image or an artwork from the Art tab fills the background. Drag anything on the preview to move it.</div>
+        </div>
+
+        <div class="pane" id="p-text" role="tabpanel" hidden>
+          <div class="two">
+            <label class="f">Title<input type="text" id="title" value="The Sound of Rain" placeholder="The Sound of Rain" maxlength="48"></label>
+            <label class="f">Name<input type="text" id="name" value="@yourname" maxlength="40"></label>
+            <label class="f">Guest name <span>(optional)</span><input type="text" id="guestName" value="" maxlength="40" placeholder="Shown when you add a guest photo"></label>
+          </div>
+          <div class="f">Font</div>
+          <div class="fonts" id="titleFont" role="group" aria-label="Title font"></div>
+          <label class="slider" for="textSize">Text size <b id="textSizeVal">100%</b><input type="range" id="textSize" min="60" max="160" step="5" value="100"></label>
+        </div>
+
+        <div class="pane" id="p-subs" role="tabpanel" hidden>
+          <div class="note">Turns your speech into text right on your device, in many languages. The speech model downloads once (about 80 MB) and then works offline.</div>
+          <div class="two">
+            <label class="f">Language<select id="lang">
+              <option value="english">English</option><option value="arabic">Arabic</option><option value="chinese">Chinese</option><option value="french">French</option><option value="german">German</option><option value="hindi">Hindi</option><option value="italian">Italian</option><option value="japanese">Japanese</option><option value="korean">Korean</option><option value="persian">Persian</option><option value="portuguese">Portuguese</option><option value="russian">Russian</option><option value="spanish">Spanish</option><option value="turkish">Turkish</option><option value="urdu">Urdu</option>
+            </select></label>
+            <label class="f">Accuracy<select id="model"><option value="onnx-community/whisper-base">Fast (80 MB)</option><option value="onnx-community/whisper-small">More accurate (250 MB)</option></select></label>
+          </div>
+          <div class="row"><button class="btn" id="stt">Turn my speech into text</button><button class="btn small" id="addLine">Type a line</button><button class="btn small" id="clearSubs" hidden>Clear</button></div>
+          <div class="bar" id="sttBar" role="progressbar" aria-label="Speech model download" hidden><i id="sttFill"></i></div>
+          <div class="note" id="sttNote" role="status" aria-live="polite"></div>
+          <div class="lines" id="lines"></div>
+          <div id="spkBox"></div><!-- Audio C: Find who speaks (Host / Guest), filled by audio/speakers.js -->
+          <div class="f">Subtitle font</div>
+          <div class="fonts" id="subFont" role="group" aria-label="Subtitle font"></div>
+          <label class="slider" for="subSize">Subtitle size <b id="subSizeVal">100%</b><input type="range" id="subSize" min="60" max="180" step="5" value="100"></label>
+          <div class="row">
+            <div class="seg" id="subPos" role="group" aria-label="Position"><button data-v="auto" aria-pressed="true">Auto</button><button data-v="top" aria-pressed="false">Top</button><button data-v="middle" aria-pressed="false">Middle</button><button data-v="bottom" aria-pressed="false">Bottom</button></div>
+            <div class="seg" id="subLook" role="group" aria-label="Look"><button data-v="box" aria-pressed="true">Box</button><button data-v="outline" aria-pressed="false">Outline</button><button data-v="plain" aria-pressed="false">Plain</button></div>
+          </div>
+          <div class="swatches" id="subColor" role="group" aria-label="Subtitle colour"></div>
+        </div>
+
+        <div class="pane" id="p-color" role="tabpanel" hidden>
+          <div class="note" id="colorNote">Background and line colours for your own design. Templates keep their own palette.</div>
+          <h3>Palettes</h3><div class="presets" id="presets" role="group" aria-label="Colour palettes"></div>
+          <div class="row"><button class="btn small" id="colourSurprise">Surprise colours</button><button class="btn small" id="colourAuto">Template colours</button><span class="note" id="harmonyNote" role="status" aria-live="polite"></span></div>
+          <h3>Background</h3><div class="swatches" id="bgColor" role="group" aria-label="Background colour"></div>
+          <h3>Lines and text</h3><div class="swatches" id="inkColor" role="group" aria-label="Line colour"></div>
+          <h3>Accent</h3><div class="swatches" id="accColor" role="group" aria-label="Accent colour"></div>
+          <div class="err" id="colorWarn" role="status" hidden></div>
+        </div>
+
+        <div class="pane" id="p-mv" role="tabpanel" hidden>
+          <div class="note">Pick 2 to 6 artworks. Milani cuts between them on the beat of your music, and each artwork moves with the sound.</div>
+          <div class="mvArts" id="mvArts" role="group" aria-label="Artworks in the music video"></div>
+          <div class="row"><button class="btn small" id="mvPick">Pick for me</button><span class="note" id="mvCount"></span></div>
+          <h3>Cuts</h3><div class="seg" id="mvStyle" role="group" aria-label="Cut style"><button data-v="calm" aria-pressed="true">Calm · every 2–4 bars</button><button data-v="pulse" aria-pressed="false">Pulse · every bar</button><button data-v="fast" aria-pressed="false">Fast · every 2 beats</button></div>
+          <h3>Transition</h3><div class="seg" id="mvTrans" role="group" aria-label="Transition"><button data-v="cut" aria-pressed="true">Hard cut</button><button data-v="xfade" aria-pressed="false">Short crossfade</button></div>
+          <div class="row"><button class="btn generate" id="mvGen">New edit</button><button class="btn small" id="mvBack" disabled>Back</button></div>
+          <div class="note" id="mvNote" role="status" aria-live="polite"></div>
+          <div class="shots" id="mvShots" aria-label="Shot list"></div>
+        </div>
+
+        <div class="pane" id="p-music" role="tabpanel" hidden><div id="musicBox" style="display:grid;gap:12px"></div></div><!-- Background music: filled by music/bg-music.js -->
+
+        <div class="pane" id="p-quality" role="tabpanel" hidden>
+          <div class="seg" id="quality" role="group" aria-label="Resolution"><button data-q="720" aria-pressed="false">720p</button><button data-q="1080" aria-pressed="true">1080p</button><button data-q="1440" aria-pressed="false">2K</button><button data-q="2160" aria-pressed="false">4K</button></div>
+          <div class="note">1080p is right for X, Instagram and TikTok.</div>
+          <label class="row" style="gap:8px"><input type="checkbox" id="uiSounds"> UI sounds <span class="note">(small clicks for record, Surprise and “video ready”; never in your video)</span></label>
+          <label class="row" style="gap:8px"><input type="checkbox" id="wm" checked> Show “Made with Milani”</label>
+          <div class="row" id="wmStyleRow" hidden><span class="note">Mark style</span><div class="seg" id="wmStyle" role="group" aria-label="Watermark style"><button data-v="sig" aria-pressed="true">With signature</button><button data-v="text" aria-pressed="false">Text only</button></div></div>
+          <div id="passBox"></div><!-- Grokly Pass: wallet + membership control, filled by web3-pass.js -->
+        </div>
+      </section>
+
+      <section class="make" aria-labelledby="h-make">
+        <h2 id="h-make">3 · Get your video</h2>
+        <button class="btn primary" id="make">Make my video</button>
+        <div class="note" id="capNote" hidden></div>
+        <div class="note" id="mp4Note" hidden>This browser can’t make MP4 here, so your video will be WebM. X, Instagram and TikTok need MP4; another browser may be able to make it.</div>
+        <div class="bar" id="bar" role="progressbar" aria-label="Making your video" hidden><i id="barFill"></i></div>
+        <button class="btn small cancel" id="cancelMake" hidden>Cancel</button>
+        <div class="confirm" id="confirmBox" role="alertdialog" aria-labelledby="confirmText" hidden><span id="confirmText"></span> <button class="btn small" id="confirmGo">Make it anyway</button><button class="btn small" id="confirmStop">Cancel</button></div>
+        <div class="note" id="makeNote" role="status" aria-live="polite">Everything happens on your device. Nothing is uploaded.</div>
+        <div class="result" id="result" hidden>
+          <video id="out" controls playsinline></video>
+          <div class="row">
+            <button class="btn primary" id="share" hidden>Share</button>
+            <a class="btn" id="save" download="milani.mp4"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3v11M5 9l5 5 5-5M3 17h14"/></svg>Save video</a>
+            <a class="btn" id="postX" target="_blank" rel="noopener">Post on X</a>
+          </div>
+          <div class="note" id="resNote"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+  <!-- export runs in the background: a small progress pill, and a toast when the video is ready -->
+  <div class="pill" id="pill" role="status" aria-live="polite" hidden><span id="pillText">Making your video…</span><span class="pillWarn" id="pillWarn" hidden> · Background tabs run slower: come back to this tab to finish sooner.</span><button class="btn small" id="pillCancel">Cancel</button></div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden><b>Your video is ready</b><a class="btn small" id="toastSave" download>Download</a><button class="btn small" id="toastShare" hidden>Share</button><button class="btn small" id="toastClose" aria-label="Close">✕</button></div>
+
+  <footer><span>Made by Reza Milani · MilaniArte</span><a href="THIRD_PARTY_NOTICES.txt" target="_blank" rel="noopener" style="color:inherit">Licences</a><span id="footSoon">Longer videos and 4K for collectors: coming soon · <a href="https://verse.works/rezamilani" target="_blank" rel="noopener">Reza Milani on Verse</a></span></footer>
+</div>
+
+<script src="mp4-muxer.js"></script>
+<script src="vendor/webm-muxer.js"></script>
+<script src="vendor/fix-webm-duration.js"></script>
+<script src="colour.js"></script>
+<script src="music-video.js"></script>
+<script src="ui-sound.js"></script>
+<script src="engine.js"></script>
+<script src="art-engine.js"></script>
+<script src="web3-pass.js"></script><!-- Grokly Pass -->
+<script src="music/music3.js"></script><script src="music/bg-music.js"></script><!-- Background music -->
+<script src="audio/dsp.js"></script><script src="audio/voice-polish.js"></script><script src="audio/silence.js"></script><script src="audio/speakers.js"></script><script src="audio/beat-sync.js"></script><!-- Audio C -->
+<script>
+(() => {
+const wmText = () => 'Made with Milani'; // founder: the mark is always "Made with Milani"; by default the signature sits beside it
+let SIG = null; // the founder's signature path (brand/signature.svg), for the optional signature watermark
+const E = window.GroklyEngine, SR = E.SR, FPS = 30, MAXS = 300, $ = (id) => document.getElementById(id);
+const CARDS = [['square', 'post'], ['poster', 'post'], ['podcast', 'post'], ['bubble', 'story'], ['pill', 'story'], ['forest', 'story'], ['ask', 'story'], ['arch', 'story'], ['bubbles', 'story'], ['split', 'story'], ['youtube', 'wide']];
+const WAVES = ['full', 'bars', 'circle', 'equalizer', 'orbit', 'line', 'waves', 'dots'];
+const FMT = { post: [1080, 1350], square: [1080, 1080], story: [1080, 1920], wide: [1920, 1080] };
+const CARD_SIZE = { post: [1080, 1350], story: [1080, 1920], wide: [1920, 1080] };
+// fonts: SIL OFL Google families, self-hosted (vendor/fonts.css), plus the device's own fonts (Apple's SF / New York on Apple devices)
+// named only in a CSS stack, never bundled. A value with a comma is a ready-made stack; any other value is one family name.
+const SYS_SANS = 'system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
+const SYS_SERIF = 'ui-serif, "New York", Georgia, "Times New Roman", serif';
+const FONTS = [['', 'System (Apple/Device)'], [SYS_SERIF, 'System serif'], ['Inter', 'Inter'], ['DM Sans', 'DM Sans'], ['Montserrat', 'Montserrat'], ['Poppins', 'Poppins'], ['Space Grotesk', 'Space Grotesk'], ['Bricolage Grotesque', 'Bricolage'],
+  ['Playfair Display', 'Playfair'], ['Lora', 'Lora'], ['Anton', 'ANTON'], ['Bebas Neue', 'BEBAS NEUE'], ['Space Mono', 'Space Mono'], ['JetBrains Mono', 'JetBrains Mono'], ['Caveat', 'Handwritten']];
+const fontStack = (f) => (!f ? SYS_SANS : f.includes(',') ? f : `"${f}", ${SYS_SANS}`);
+const COLOR_NAMES = { '#0c0c0d': 'Black', '#f3f1ec': 'Off-white', '#e6dfd8': 'Sand', '#005066': 'Deep teal', '#0099cc': 'Sky blue', '#0058a0': 'Royal blue', '#ec7a6a': 'Coral', '#4f2d3a': 'Plum', '#b291b4': 'Lavender', '#004b33': 'Forest green', '#87a29a': 'Sage', '#4b4a66': 'Slate', '#b2d4cb': 'Mint', '#ffffff': 'White' };
+const PALETTE = ['#0c0c0d', '#f3f1ec', '#e6dfd8', '#005066', '#0099cc', '#0058a0', '#ec7a6a', '#4f2d3a', '#b291b4', '#004b33', '#87a29a', '#4b4a66', '#b2d4cb', '#ffffff'];
+const S = { style: 'card:square', fmt: 'post', pcm: null, full: null, feats: null, name: 'Sample beat', avatar: null, trim: 0, font: '', textScale: 1,
+  subs: [], subFont: '', subScale: 1, subPos: 'auto', subLook: 'box', subColor: 'auto', bg: null, ink: null, acc: null, q: 1080, wm: true, wmStyle: 'sig' /* founder: signature + "Made with Milani" by default */, pic: { kind: 'photo' }, userPhoto: false, artSeeds: {}, artHist: {}, artVers: {}, lastArt: null, guest: null, bgImage: null, layout: {}, mode: 'voice', mv: { arts: [], style: 'calm', trans: 'cut', seed: (Math.random() * 2 ** 31) >>> 0, hist: [] } };
+const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+const artSeedOf = (id) => S.artSeeds[id] || GroklyArt.defaultSeed;
+const picIsArt = () => S.pic.kind === 'art';
+const kindOf = (s) => (s.startsWith('card:') ? 'card' : s === 'full' ? 'full' : 'wave');
+const isCard = (s) => s.startsWith('card:'), cardFmt = (s) => (CARDS.find(([n]) => 'card:' + n === s) || [])[1];
+const fmtT = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+// where subtitles sit by default on each template (fraction of height): over the photo, away from titles and bars
+const AUTO_Y = { 'card:square': 0.44, 'card:poster': 0.66, 'card:podcast': 0.5, 'card:split': 0.44, 'card:bubble': 0.24, 'card:pill': 0.46, 'card:forest': 0.5, 'card:ask': 0.86, 'card:arch': 0.3, 'card:bubbles': 0.3, 'card:youtube': 0.88 };
+// Top / Bottom per template, as [top edge of the subtitle block, bottom edge of the block] (fraction of height), clear of titles, names, bars and the watermark
+const POS_Y = { 'card:square': [0.05, 0.53], 'card:poster': [0.05, 0.79], 'card:podcast': [0.16, 0.62], 'card:split': [0.05, 0.53], 'card:bubble': [0.08, 0.965], 'card:pill': [0.06, 0.95],
+  'card:forest': [0.13, 0.645], 'card:ask': [0.3, 0.96], 'card:arch': [0.02, 0.975], 'card:bubbles': [0.24, 0.97], 'card:youtube': [0.19, 0.97], full: [0.2, 0.8] };
+// Story (9:16) videos: the bottom ~18 % is covered by the Instagram / TikTok caption and buttons, so Bottom stays above it
+for (const k of ['card:pill', 'card:ask', 'card:arch', 'card:bubbles']) POS_Y[k][1] = 0.8;
+POS_Y['card:bubble'][1] = 0.5; // Bubble: the lower disc holds the title, so Bottom sits just above it (over the photo)
+// with a guest, the guest badge sits on the lower right of a big photo: Auto subtitles go to the upper part of the photo instead
+const AUTO_Y_GUEST = { 'card:square': 0.16, 'card:split': 0.16, 'card:poster': 0.25, 'card:forest': 0.25, 'card:podcast': 0.2 };
+const WAVE_POS = [0.22, 0.915]; // wave designs: below the title/name, above the watermark (Auto uses the bottom one)
+// settings kept across reloads (QA: most settings were lost)
+const SAVE_KEYS = ['wmStyle', 'mode', 'mv', 'colourSeed', 'fmt', 'bg', 'ink', 'acc', 'font', 'textScale', 'subFont', 'subScale', 'subPos', 'subLook', 'subColor', 'q', 'artSeeds', 'artHist', 'artVers', 'lastArt', 'layout'];
+// drag-to-move layout: offsets (fraction of width / height) per item, kept per template + video shape
+const layoutKey = (st = S) => `${st.style}|${isCard(st.style) ? cardFmt(st.style) : st.fmt}`;
+const layoutOf = (st = S) => (st.layout[layoutKey(st)] = st.layout[layoutKey(st)] || {});
+const saveState = () => { const o = {}; SAVE_KEYS.forEach((k) => (o[k] = S[k])); store.set('grokly.settings', JSON.stringify(o)); };
+const RTL = /[֐-ࣿיִ-﷿ﹰ-﻿]/;
+
+// ---------- sample photo + sample beat, so the editor opens in a working state ----------
+function defaultAvatar() {
+  const c = document.createElement('canvas'); c.width = c.height = 600; const g = c.getContext('2d');
+  const sky = g.createLinearGradient(0, 0, 0, 600); sky.addColorStop(0, '#0b4d63'); sky.addColorStop(1, '#e98a6e'); g.fillStyle = sky; g.fillRect(0, 0, 600, 600);
+  g.fillStyle = '#f6d9a8'; g.beginPath(); g.arc(400, 230, 70, 0, 7); g.fill();
+  [['#2c5f63', 380, .9], ['#1c3d44', 430, 1.4], ['#0f2429', 500, 2]].forEach(([col, y, f]) => { g.fillStyle = col; g.beginPath(); g.moveTo(0, 600); for (let x = 0; x <= 600; x += 10) g.lineTo(x, y - Math.sin(x / 90 * f) * 30 - Math.cos(x / 41) * 10); g.lineTo(600, 600); g.fill(); });
+  return c.toDataURL('image/jpeg', .9);
+}
+async function sampleBeat() {
+  const len = 12, ctx = new OfflineAudioContext(1, SR * len, SR), sp = 60 / 112;
+  for (let i = 0; i * sp < len; i++) {
+    const t = i * sp, o = ctx.createOscillator(), gn = ctx.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(42, t + .25);
+    gn.gain.setValueAtTime(.9, t); gn.gain.exponentialRampToValueAtTime(.001, t + .35); o.connect(gn).connect(ctx.destination); o.start(t); o.stop(t + .4);
+    const nb = ctx.createBuffer(1, SR * .06, SR), d = nb.getChannelData(0); for (let k = 0; k < d.length; k++) d[k] = (Math.random() * 2 - 1) * (1 - k / d.length);
+    const ns = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), hg = ctx.createGain(); ns.buffer = nb; hp.type = 'highpass'; hp.frequency.value = 7000; hg.gain.value = .25;
+    ns.connect(hp).connect(hg).connect(ctx.destination); ns.start(t + sp / 2);
+  }
+  [[220, 277.2, 329.6], [196, 246.9, 293.7], [174.6, 220, 261.6], [196, 246.9, 329.6]].forEach((ch, k) => ch.forEach((f) => {
+    const t = k * 3, o = ctx.createOscillator(), gn = ctx.createGain(), lp = ctx.createBiquadFilter(); o.type = 'sawtooth'; o.frequency.value = f; lp.type = 'lowpass'; lp.frequency.value = 1400;
+    gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(.05, t + .4); gn.gain.linearRampToValueAtTime(0, t + 3); o.connect(lp).connect(gn).connect(ctx.destination); o.start(t); o.stop(t + 3);
+  }));
+  return (await ctx.startRendering()).getChannelData(0).slice();
+}
+const SAMPLE_SUBS = [{ start: 0.3, end: 3, text: 'This is how your subtitles look' }, { start: 3, end: 6, text: 'Tap a line to fix any word' }, { start: 6, end: 9.5, text: 'Record your voice and press “Turn my speech into text”' }];
+
+// ---------- sound in ----------
+async function decode(arrayBuf) {
+  const ac = new (window.AudioContext || window.webkitAudioContext)();
+  try { return await ac.decodeAudioData(arrayBuf); } finally { ac.close && ac.close(); }
+}
+async function resample(buf, rate) {
+  const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * rate)), rate), s = off.createBufferSource(); s.buffer = buf; s.connect(off.destination); s.start();
+  return (await off.startRendering()).getChannelData(0).slice();
+}
+const MIN_S = 1, MAX_FILE_S = 15 * 60; // shortest sound we accept; longest file we decode (decoding is all in memory)
+let subsOut = []; // subtitle lines outside the 5-minute window, in file time, so moving "Start at" back restores them
+function setSound(full, name) {
+  stop(); S.full = full; S.name = name; S.trim = 0; trimWas = 0; subsOut = [];
+  const dur = full.length / SR, win = Math.min(MAXS, dur);
+  // a new sound keeps the lines the user typed (clipped to the new length); only the sample lines are dropped
+  S.subs = S.subs.filter((x) => !x.sample && x.start < win - 0.2).map((x) => ({ ...x, end: Math.min(win, x.end) }));
+  S.subsSample = false; renderLines();
+  if (S.subs.length) $('sttNote').textContent = `Kept your ${S.subs.length} subtitle line${S.subs.length > 1 ? 's' : ''} for the new sound. Use Clear to remove them.`;
+  updateTrimBox(true);
+  $('soundName').textContent = name; cut();
+}
+function updateXNote() { const len = S.pcm ? S.pcm.length / SR + (window.GroklyMusic && GroklyMusic.on && GroklyMusic.tailSamples ? GroklyMusic.tailSamples(SR) / SR : 0) : 0; $('xNote').hidden = len <= 140; }
+// the "Start at" window: up to 5 minutes, or in a free Music video the free length, so the user picks which part (e.g. the chorus)
+const freeCap = () => (window.GroklyPass && GroklyPass.maxSeconds && !(GroklyPass.hasCredits && GroklyPass.hasCredits()) ? GroklyPass.maxSeconds() : 0);
+function windowLen() { const c = freeCap(); return mvOn() && c ? Math.min(MAXS, c) : MAXS; }
+function updateTrimBox(reset) {
+  if (!S.full) return; const dur = S.full.length / SR, win = windowLen(); $('trimBox').hidden = dur <= win + 0.05;
+  if (dur > win) { $('trim').max = Math.floor((dur - win) * 10) / 10; $('trim').step = 0.1; if (reset) { $('trim').value = 0; $('trimVal').textContent = '0:00'; } else if (+$('trim').value > +$('trim').max) { $('trim').value = $('trim').max; } }
+  const lab = document.querySelector('#trimBox label'); if (lab) lab.lastChild.textContent = win < MAXS ? ` · the free video uses ${win} seconds from here` : ' · videos use up to 5 minutes';
+}
+function updateCapNote() { const c = freeCap(), len = S.pcm ? S.pcm.length / SR : 0; $('capNote').hidden = !(mvOn() && c && len > c + 0.5); $('capNote').textContent = `Free: the first ${c} s from “Start at”, with the watermark — mint an artwork for the full length.`; }
+function fadeOutEnd(pcm, sec) { const out = pcm.slice(), n = Math.min(out.length, Math.round(sec * SR)); for (let i = 0; i < n; i++) out[out.length - n + i] *= 0.5 + 0.5 * Math.cos((Math.PI * (i + 1)) / n); return out; }
+function cut() {
+  const a = Math.floor(S.trim * SR); S.pcm = S.full.subarray(a, a + MAXS * SR); updateXNote(); // X: 2:20 without Premium (the music adds its fade-out tail)
+  const raw = S.pcm; if (window.GroklyPolish) S.pcm = GroklyPolish.process(S.full, raw, a); // Audio C: polished window if ready (a Worker polishes in the background, then swaps it in), else raw
+  S.feats = E.analyze(raw, FPS); // Audio C: the art follows the voice's shape from the raw window (features are level-independent), so a finished polish never re-analyses
+  drawWave(); const m = $('meta'), b = document.createElement('bdi'); b.textContent = S.name; m.textContent = ''; m.append(b, ` · ${fmtT(S.pcm.length / SR)}`); pausedAt = Math.min(pausedAt, S.pcm.length / SR); drawPreview(0); updateCapNote();
+  if (mvOn()) mvRebuild(true); // Music video: a new edit for the new sound
+}
+// length of a media file from its metadata, without decoding it (0 if unknown)
+function mediaLength(f) {
+  return new Promise((res) => { const el = document.createElement(f.type.startsWith('video') ? 'video' : 'audio'), u = URL.createObjectURL(f); let done = false;
+    const end = (v) => { if (done) return; done = true; URL.revokeObjectURL(u); el.removeAttribute('src'); res(isFinite(v) ? v : 0); };
+    el.preload = 'metadata'; el.onloadedmetadata = () => end(el.duration); el.onerror = () => end(0); setTimeout(() => end(0), 4000); el.src = u; });
+}
+const busySound = (on) => { $('upload').disabled = $('rec').disabled = $('make').disabled = on; };
+function drawWave() {
+  const c = $('wave'), r = c.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); c.width = Math.max(10, r.width * dpr); c.height = 34 * dpr;
+  const g = c.getContext('2d'), n = Math.floor(c.width / (4 * dpr)), step = Math.floor(S.pcm.length / n) || 1, col = getComputedStyle(document.body).color;
+  g.clearRect(0, 0, c.width, c.height); g.fillStyle = col; let mx = 1e-6; const v = [];
+  for (let i = 0; i < n; i++) { let m = 0; for (let k = i * step; k < (i + 1) * step && k < S.pcm.length; k += 16) m = Math.max(m, Math.abs(S.pcm[k])); v.push(m); mx = Math.max(mx, m); }
+  g.globalAlpha = .75; v.forEach((m, i) => { const h = Math.max(2 * dpr, (m / mx) * c.height); g.fillRect(i * 4 * dpr, (c.height - h) / 2, 2 * dpr, h); }); g.globalAlpha = 1;
+}
+const showErr = (m) => { $('soundErr').textContent = m; $('soundErr').hidden = !m; if (m) uiSound('error'); };
+// UI sounds (ui-sound.js): off by default; never while the microphone records or a video is being made
+const uiSound = (n) => { if (window.GroklyUISound && (!busy || n === 'done' || n === 'error')) GroklyUISound.play(n); }; // done / error mark the end of an export
+if (window.GroklyUISound) { GroklyUISound.setBlocked(() => !!(rec && rec.state === 'recording'));
+  $('uiSounds').checked = GroklyUISound.enabled(); $('uiSounds').onchange = (e) => { GroklyUISound.setEnabled(e.target.checked); if (e.target.checked) GroklyUISound.play('toggle-on'); }; }
+$('upload').onclick = () => $('file').click();
+$('file').onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return; showErr('');
+  if (rec) { recDiscard = true; if (rec.state !== 'inactive') rec.stop(); } // uploading during a recording ends (and drops) the recording
+  stop();
+  const len = await mediaLength(f);
+  if (len > MAX_FILE_S || f.size > 300 * 1048576) return showErr(`That file is too long${len ? ` (${fmtT(len)})` : ''}. Milani makes videos up to 5 minutes; files longer than ${MAX_FILE_S / 60} minutes can't be opened.`);
+  busySound(true); $('soundName').textContent = len > 120 ? `Reading a ${Math.round(len / 60)}-minute file…` : 'Reading…';
+  try { const full = await resample(await decode(await f.arrayBuffer()), SR); if (full.length > SR * MAX_FILE_S) throw new Error(`That file is too long (${fmtT(full.length / SR)}). Milani makes videos up to 5 minutes; files longer than ${MAX_FILE_S / 60} minutes can't be opened.`); if (full.length < SR * MIN_S) throw Object.assign(new Error('short'), { short: true }); setSound(full, f.name.replace(/\.[^.]+$/, '')); }
+  catch (x) { $('soundName').textContent = S.name;
+    showErr(x && x.short ? 'That sound is shorter than 1 second. Your previous sound is kept.'
+      : /\.(m4a|mp4|m4v|mov|aac)$/i.test(f.name) && !(window.MediaSource && MediaSource.isTypeSupported('audio/mp4; codecs="mp4a.40.2"')) ? "This browser can't read M4A or MP4 sound. Try an MP3 or WAV, or open Milani in Chrome, Edge or Safari."
+      : f.type.startsWith('video') ? "Couldn't find any sound in that video. Try another video, an MP3 or a WAV."
+      : "Couldn't read the sound in that file. Try an MP3, M4A, WAV or a phone video."); }
+  finally { busySound(false); }
+};
+$('trim').oninput = (e) => { S.trim = +e.target.value; $('trimVal').textContent = fmtT(S.trim); };
+let trimWas = 0;
+$('trim').onchange = () => { stop(); const dur = Math.min(MAXS, S.full.length / SR - S.trim);
+  // keep every line in file time; show the ones that fall inside the new window
+  const all = [...subsOut, ...S.subs.map((x) => ({ ...x, start: x.start + trimWas, end: x.end + trimWas }))]; trimWas = S.trim;
+  const inWin = (x) => x.end - S.trim > 0.2 && x.start - S.trim < dur - 0.2;
+  subsOut = all.filter((x) => !inWin(x)); S.subs = all.filter(inWin).map((x) => ({ ...x, start: Math.max(0, x.start - S.trim), end: Math.min(dur, x.end - S.trim) })).sort((a, b) => a.start - b.start); renderLines(); cut(); };
+let rec = null, recTimer = null;
+let recStarting = false, recDiscard = false;
+$('rec').onclick = async () => {
+  if (rec) return rec.state !== 'inactive' && rec.stop();
+  if (recStarting) return; recStarting = true;
+  showErr(''); stop();
+  let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch { return showErr('The microphone is blocked. Allow it in your browser settings, or upload a file instead.'); } finally { recStarting = false; }
+  const chunks = []; rec = new MediaRecorder(stream); rec.ondataavailable = (e) => e.data.size && chunks.push(e.data); recDiscard = false;
+  const t0 = Date.now(); $('rec').classList.add('on'); $('recLabel').textContent = 'Stop · 0:00'; $('play').disabled = $('make').disabled = $('stt').disabled = $('upload').disabled = true; // nothing else runs while recording; no playback into the mic
+  recTimer = setInterval(() => { const s = (Date.now() - t0) / 1000; $('recLabel').textContent = `Stop · ${fmtT(s)}`; if (s >= MAXS && rec && rec.state !== 'inactive') rec.stop(); }, 250);
+  rec.onstop = async () => {
+    clearInterval(recTimer); stream.getTracks().forEach((t) => t.stop()); $('rec').classList.remove('on'); $('recLabel').textContent = 'Record again'; rec = null; $('play').disabled = $('make').disabled = $('stt').disabled = $('upload').disabled = false;
+    if (recDiscard) { recDiscard = false; return; }
+    try { const full = await resample(await decode(await new Blob(chunks).arrayBuffer()), SR);
+      if (full.length < SR * MIN_S) return showErr('That recording was shorter than 1 second, so your previous sound is kept. Press Record, speak, then press Stop.');
+      setSound(full, 'My recording'); uiSound('rec-stop'); } catch { showErr('That recording could not be read. Please try again.'); }
+  };
+  if (window.GroklyUISound && GroklyUISound.enabled()) { GroklyUISound.play('rec-start'); await new Promise((r) => setTimeout(r, 200)); } // the click ends before the mic records
+  rec.start(250);
+};
+
+// ---------- options for the engine ----------
+function opts(scale) {
+  const card = isCard(S.style), [bw, bh] = card ? CARD_SIZE[cardFmt(S.style)] : FMT[S.fmt];
+  const ev = (n) => Math.max(2, Math.round((n * scale) / 2) * 2);
+  return { style: S.style.replace('card:', ''), title: $('title').value.trim(), sub: $('name').value.trim(), avatar: S.avatar, watermark: wmOn() ? wmText() : '', // Grokly Pass: wmOn()
+    theme: S.bg && luminance(S.bg) > 0.5 ? 'light' : 'dark', paper: S.bg, ink: S.ink, accent: S.acc, font: S.font, textScale: S.textScale, seed: 7, badge: picIsArt() || (S.bgImage && S.style === 'full') ? S.avatar : null, guest: S.guest, guestName: $('guestName').value.trim(), bgImage: S.bgImage, layout: layoutOf(), wmSig: S.wmStyle === 'sig' && SIG ? SIG : null, markLast: true /* the watermark is drawn after the subtitles (drawSubs) */, W: ev(bw), H: ev(bh), keepSize: true,
+    artShort: scale < 1 ? Math.round(Math.min(bw, bh) * scale) : Math.min(S.style === 'full' ? 1440 : 900, Math.round(Math.min(bw, bh) * scale)) }; // behind a template the artwork is a background: 900 px is plenty and much faster to export
+}
+// Grokly Pass: the checkbox only counts with collector credits; free (or web3-pass.js missing) ⇒ the mark is always on
+const wmOn = () => (window.GroklyPass ? GroklyPass.showWatermark(S.wm) : true);
+// WCAG 2.x relative luminance (sRGB channels linearised) and contrast ratio (L1 + 0.05) / (L2 + 0.05)
+function wcagLum(hex) { const n = parseInt(hex.slice(1, 7), 16), lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }; return 0.2126 * lin(n >> 16) + 0.7152 * lin((n >> 8) & 255) + 0.0722 * lin(n & 255); }
+function contrast(a, b) { const x = wcagLum(a), y = wcagLum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+const TEXT_MIN = 4.5, MARK_MIN = 3; // text (titles are shrunk 3× on a phone, so no "large text" exception) / non-text marks such as waves and accents
+function luminance(hex) { const n = parseInt(hex.slice(1), 16); return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255; }
+
+// ---------- subtitles drawn on top of every template ----------
+let subsBox = null; // where the subtitle block was last drawn (for dragging it)
+const contrastOn = (bg, pref) => (pref && contrast(pref, bg) >= TEXT_MIN ? pref : contrast('#111111', bg) >= contrast('#ffffff', bg) ? '#111111' : '#ffffff');
+// the free watermark is drawn LAST, over the subtitles: the engines leave it in g.canvas._wm (opts.markLast) and its area in _wmRect
+function drawSubs(g, W, H, t, st = S) { try { drawSubsOnly(g, W, H, t, st); } finally { const m = g.canvas._wm; if (m) { g.canvas._wm = null; m(); } } }
+// a box [x, y, w, h] that overlaps the watermark is moved just above it (or below it, or beside it, whichever fits and moves it least)
+function clearOfMark(cv, x, y, w, h, gap) {
+  const R = cv && cv._wmRect, W = cv.width, H = cv.height; if (!R || x + w <= R[0] - gap || x >= R[0] + R[2] + gap || y + h <= R[1] - gap || y >= R[1] + R[3] + gap) return { x, y };
+  const c = [{ x, y: R[1] - gap - h }, { x, y: R[1] + R[3] + gap }, { x: R[0] - gap - w, y }, { x: R[0] + R[2] + gap, y }].filter((p) => p.x >= 0 && p.y >= 0 && p.x + w <= W && p.y + h <= H);
+  c.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y)); return c[0] || { x, y: Math.max(0, R[1] - gap - h) };
+}
+function drawSubsOnly(g, W, H, t, st = S) {
+  subsBox = null; let s = null; for (const x of st.subs) if (t >= x.start && t < x.end && x.text.trim() && (!s || x.start >= s.start)) s = x; if (!s) return; // overlapping lines: the newest one shows
+  const lo = (st.layout && st.layout[layoutKey(st)] && st.layout[layoutKey(st)].subs) || {}; if (lo.hide) return; // the user hid the subtitles
+  const u = Math.min(W, H) / 1080, size = 46 * u * st.subScale * (lo.s || 1), lh = size * 1.28, maxW = W * 0.84, fam = fontStack(st.subFont);
+  g.save(); g.font = `700 ${size}px ${fam}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = RTL.test(s.text) ? 'rtl' : 'ltr';
+  const lines = [];
+  for (const para of s.text.trim().split(/\n+/)) { // Enter in a line forces a new row
+    const seg = window.Intl && Intl.Segmenter ? [...new Intl.Segmenter(undefined, { granularity: 'word' }).segment(para.trim())].map((x) => x.segment) : para.trim().split(/(\s+)/);
+    let line = '';
+    for (const w of seg) { const tt = line + w; if (g.measureText(tt.trim()).width > maxW && line.trim()) { lines.push(line.trim()); line = w.trimStart(); } else line = tt;
+      while (g.measureText(line).width > maxW && line.length > 1) { let k = line.length - 1; while (k > 1 && g.measureText(line.slice(0, k)).width > maxW) k--; lines.push(line.slice(0, k)); line = line.slice(k); } }
+    if (line.trim()) lines.push(line.trim());
+  }
+  s.cut = lines.length > 4; if (s.cut) { lines.splice(4); lines[3] = lines[3].replace(/\s*\S?$/, '…'); }
+  const block = lines.length * lh, pp = POS_Y[st.style] || WAVE_POS;
+  const y0 = st.subPos === 'top' ? H * pp[0] : st.subPos === 'bottom' ? H * pp[1] - block : st.subPos === 'middle' ? H * 0.5 - block / 2
+    : (() => { const pos = (st.guest && AUTO_Y_GUEST[st.style]) || (AUTO_Y[st.style] ?? (st.style === 'full' ? 0.6 : null)); return pos == null ? H * WAVE_POS[1] - block : pos <= 0.25 ? H * pos : pos >= 0.75 ? H * pos - block : H * pos - block / 2; })();
+  const widest = Math.max(...lines.map((l) => g.measureText(l).width));
+  // the user can drag the subtitles: offset per template + shape
+  let cx = W / 2 + (lo.x || 0) * W, yy = y0 + (lo.y || 0) * H;
+  { const bw = widest + size * 1.1, bh = block + size * 0.6, p = clearOfMark(g.canvas, cx - bw / 2, yy - size * 0.3, bw, bh, size * 0.25); cx = p.x + bw / 2; yy = p.y + size * 0.3; } // never over the watermark
+  // colours: a picked subtitle colour wins; "Auto" follows the Colour tool (accent box + readable text, or the lines/text colour)
+  let txt = st.subColor, boxCol;
+  if (!txt || txt === 'auto') { if (st.acc) { boxCol = st.acc + 'e6'; txt = contrastOn(st.acc, st.ink); } else if (st.ink) { txt = st.ink; boxCol = luminance(st.ink) < 0.4 ? 'rgba(255,255,255,.8)' : 'rgba(0,0,0,.62)'; } else txt = '#ffffff'; }
+  boxCol = boxCol || (luminance(txt) < 0.4 ? 'rgba(255,255,255,.78)' : 'rgba(0,0,0,.62)'); /* dark text gets a light box */
+  subsBox = { x: cx - widest / 2 - size * .55, y: yy - size * .3, w: widest + size * 1.1, h: block + size * .6 };
+  if (st.subLook === 'box') { g.fillStyle = boxCol; g.beginPath(); g.roundRect(subsBox.x, subsBox.y, subsBox.w, subsBox.h, size * .35); g.fill(); }
+  lines.forEach((l, i) => {
+    const y = yy + lh * i + lh / 2;
+    if (st.subLook === 'outline') { g.lineJoin = 'round'; g.lineWidth = size * .16; g.strokeStyle = luminance(txt) < 0.4 ? '#fff' : '#000'; g.strokeText(l, cx, y); }
+    if (st.subLook === 'plain') { g.shadowColor = luminance(txt) < 0.4 ? 'rgba(255,255,255,.6)' : 'rgba(0,0,0,.55)'; g.shadowBlur = size * .25; }
+    g.fillStyle = txt; g.fillText(l, cx, y);
+  });
+  g.restore();
+}
+function renderLines() {
+  const box = $('lines'); box.innerHTML = ''; $('clearSubs').hidden = !S.subs.length;
+  S.subs.forEach((s, i) => {
+    const row = document.createElement('div'); row.className = 'line';
+    // editable start / end in seconds (one decimal)
+    const tm = document.createElement('div'); tm.className = 'tm';
+    const tIn = (k, lab) => { const x = document.createElement('input'); x.type = 'number'; x.step = '0.1'; x.min = '0'; x.max = String((S.pcm.length / SR).toFixed(1)); x.value = s[k].toFixed(1); x.setAttribute('aria-label', `${lab} of subtitle ${i + 1}, seconds`); x.title = `${lab} (seconds)`;
+      x.onchange = () => { const dur = S.pcm.length / SR; let v = Math.max(0, Math.min(dur, +x.value || 0)); if (k === 'start') { s.start = Math.min(v, Math.max(0, s.end - 0.2)); } else { s.end = Math.max(v, Math.min(dur, s.start + 0.2)); }
+        s.sample = false; S.subs.sort((a, b) => a.start - b.start); renderLines(); drawPreview(Math.floor(s.start * FPS) + 1); }; return x; };
+    const lab = (t, x) => { const l = document.createElement('label'); l.append(t, x); return l; };
+    tm.append(lab('Start (s)', tIn('start', 'Start')), lab('End (s)', tIn('end', 'End')));
+    if (S.guest) { const w = document.createElement('select'); w.className = 'who'; w.setAttribute('aria-label', `Who speaks subtitle ${i + 1}`); w.innerHTML = '<option value="host">Host</option><option value="guest">Guest</option>'; w.value = s.who || 'host';
+      w.onchange = () => { s.who = w.value; s.sample = false; drawPreview(Math.floor(s.start * FPS) + 1); }; tm.append(w); }
+    const ta = document.createElement('textarea'); ta.rows = 1; ta.value = s.text; ta.setAttribute('aria-label', `Subtitle ${i + 1}`);
+    const cutHint = () => { ta.title = s.cut ? 'Too long: only the first 4 rows show in the video' : ''; ta.style.borderColor = s.cut ? 'var(--coral)' : ''; };
+    ta.oninput = () => { s.text = ta.value; s.sample = false; drawPreview(src ? curFrame() : Math.floor(s.start * FPS) + 1); cutHint(); };
+    ta.onfocus = () => { if (!src) drawPreview(Math.floor(s.start * FPS) + 1); };
+    const del = document.createElement('button'); del.textContent = '✕'; del.setAttribute('aria-label', `Remove subtitle ${i + 1}`); del.onclick = () => { S.subs.splice(i, 1); renderLines(); drawPreview(curFrame()); };
+    row.append(tm, ta, del); box.append(row); cutHint();
+  });
+}
+$('addLine').onclick = () => {
+  const dur = S.pcm.length / SR; let at = src ? Math.max(0, ac.currentTime - t0) : Math.max(0, ...S.subs.map((x) => x.end));
+  for (const x of [...S.subs].sort((a, b) => a.start - b.start)) if (at >= x.start - 0.05 && at < x.end) at = x.end; // never start inside another line
+  let start = at, end = Math.min(dur, start + 3);
+  if (end - start < 0.5) { // no free time left at the end: take the second half of the last line
+    const last = [...S.subs].sort((a, b) => b.end - a.end)[0]; if (last && last.end - last.start >= 1) { start = (last.start + last.end) / 2; last.end = start; end = Math.min(dur, start + 3); } else { start = Math.max(0, dur - 1); end = dur; }
+    $('sttNote').textContent = 'There was no free time left at the end, so the new line shares time with the one before. Change the times next to each line.';
+  }
+  const line = { start, end, text: '' }; S.subsSample = false; S.subs.push(line); S.subs.sort((a, b) => a.start - b.start); renderLines();
+  const tas = $('lines').querySelectorAll('textarea'); tas[S.subs.indexOf(line)]?.focus();
+};
+$('clearSubs').onclick = () => { S.subs = []; subsOut = []; renderLines(); drawPreview(curFrame()); };
+let worker = null;
+$('stt').onclick = async () => {
+  const btn = $('stt'); btn.disabled = true; $('sttBar').hidden = false; $('sttFill').style.width = '0%'; $('sttNote').textContent = 'Preparing…';
+  try {
+    const b = new AudioBuffer({ length: S.pcm.length, sampleRate: SR, numberOfChannels: 1 }); b.copyToChannel(S.pcm, 0);
+    const audio = await resample(b, 16000);
+    worker = worker || new Worker('stt-worker.js', { type: 'module' });
+    const res = await new Promise((resolve, reject) => {
+      worker.onmessage = ({ data: d }) => {
+        if (d.type === 'download') { $('sttFill').style.width = Math.round((d.loaded / d.total) * 100) + '%'; $('sttNote').textContent = `Downloading the speech model (one time): ${(d.loaded / 1048576).toFixed(0)} of ${(d.total / 1048576).toFixed(0)} MB`; }
+        if (d.type === 'working') { $('sttFill').style.width = '100%'; $('sttNote').textContent = 'Listening to your sound…'; }
+        if (d.type === 'done') resolve(d); if (d.type === 'error') reject(new Error(d.message));
+      };
+      worker.onerror = (e) => reject(new Error(e.message || 'the speech engine could not start'));
+      worker.postMessage({ type: 'run', audio, language: $('lang').value, model: $('model').value }, [audio.buffer]);
+    });
+    const dur = S.pcm.length / SR;
+    S.subs = res.segs.map((s) => ({ start: Math.max(0, s.start), end: Math.min(dur, Math.max(s.end, s.start + 0.8)), text: s.text })); S.subsSample = false; subsOut = [];
+    renderLines(); drawPreview(curFrame());
+    $('sttNote').textContent = S.subs.length ? `${S.subs.length} lines. Tap any line to fix a word.` : 'No speech found in this sound. You can type lines yourself.';
+  } catch (x) { if (worker) { worker.terminate(); worker = null; } $('sttNote').textContent = /fetch|network|load|download/i.test(x.message || '') ? "Couldn't download the speech model. Check your connection and try again (it downloads only once), or type the lines yourself." : "Speech to text didn't work on this sound. Try again, pick the other Accuracy option, or type the lines yourself."; console.warn('stt', x); }
+  finally { btn.disabled = false; $('sttBar').hidden = true; }
+};
+
+// ---------- preview ----------
+const pv = { cv: $('preview'), e: null, kind: null };
+const eng = (cv, k) => (k === 'card' ? E.makeCards(cv) : k === 'full' ? GroklyArt.makeFull(cv) : E.makeWave(cv));
+const pvSrc = GroklyArt.makeSource(); // the artwork used as the picture in the preview
+let setupId = 0;
+const idle = { level: .3, bass: .3, lowMid: .3, mid: .3, high: .2, beat: false, pulse: 0, beats: 0, bands: Array.from({ length: 32 }, (_, i) => .55 * Math.exp(-i / 14) + .1) };
+async function loadFonts() { await Promise.all([S.font, S.subFont].filter((f) => f && !f.includes(',')).flatMap((f) => [400, 700].map((w) => document.fonts.load(`${w} 40px "${f}"`, 'AaĂă').catch(() => {})))); }
+const artTitle = (id) => (GroklyArt.ART.find(([x]) => x === id) || [id, id])[1];
+// the artwork's window: same shape as the video, short side = artShort
+const imgOf = (src) => new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
+async function preparePicture(source, o, st = S) { // st: the live state, or an export job's frozen snapshot
+  if (st.mode === 'music' && st.mvPlan) { // Music video: the cut-between-artworks canvas is the picture
+    source.destroy(); const mix = st.mvMix || pvMix, sc = o.artShort / Math.min(o.W, o.H), w = Math.round(o.W * sc), h = Math.round(o.H * sc), key = `${st.mvPlan.seed}|${st.mvPlan.shots.length}|${st.mvPlan.style}|${st.mvPlan.trans}|${st.mvPlan.shots.map((x) => x.art).join()}|${w}x${h}`;
+    if (mix.__key !== key) { mix.setPlan(st.mvPlan, w, h); mix.__key = key; } return mix.canvas;
+  }
+  if (st.pic.kind !== 'art') { source.destroy(); return st.bgImage && st.style === 'full' ? imgOf(st.bgImage) : null; } // Full: the background image fills the frame
+  const sc = o.artShort / Math.min(o.W, o.H);
+  await source.setup({ id: st.pic.id, seed: st.artSeeds[st.pic.id] || GroklyArt.defaultSeed, w: Math.round(o.W * sc), h: Math.round(o.H * sc) });
+  return source.canvas;
+}
+async function setupPreview() {
+  const k = kindOf(S.style), my = ++setupId, card = k === 'card';
+  if (pv.kind !== k) { pv.e = eng(pv.cv, k); pv.kind = k; }
+  const o = opts(0.5);
+  if (picIsArt()) { $('artNote').textContent = 'Loading the artwork…'; $('artSeed').disabled = $('genPreview').disabled = $('artBack').disabled = $('artSeedReset').disabled = true; }
+  try { await loadFonts(); o.picture = await preparePicture(pvSrc, o); if (my !== setupId) return; await pv.e.setup(o); }
+  catch (x) { if (my === setupId && picIsArt()) { $('artNote').textContent = 'This artwork could not start in this browser. Try another one.'; $('artSeed').disabled = $('genPreview').disabled = $('artSeedReset').disabled = false; } return; }
+  if (my !== setupId) return;
+  if (picIsArt()) { const sd = artSeedOf(S.pic.id), n = (S.artVers[S.pic.id] || []).indexOf(sd) + 1; $('artNote').textContent = `${artTitle(S.pic.id)} · ${sd === GroklyArt.defaultSeed ? 'original' : 'generated version ' + (n || 1)}`; }
+  else $('artNote').textContent = 'Your photo is the picture now. Pick an artwork to use it instead.';
+  $('genPreview').hidden = !picIsArt(); $('artBack').disabled = !picIsArt() || !(S.artHist[S.pic.id] || []).length; $('artSeed').disabled = $('genPreview').disabled = $('artSeedReset').disabled = false;
+  document.querySelectorAll('#artGrid .chip').forEach((x) => x.setAttribute('aria-pressed', String(picIsArt() && x.dataset.a === S.pic.id)));
+  drawPreview(curFrame());
+  $('fmtRow').hidden = card;
+  $('colorNote').textContent = (S.style === 'full' ? 'On the full picture design the picture stays as it is; the colours apply to the title, name, accents and subtitles (Subtitle colour: Auto).' : 'Background, lines and text, and accent colours apply to this design and to the subtitles (Subtitle colour: Auto).')
+    + (picIsArt() || S.bgImage ? ' The background colour shows only where the artwork or background image does not cover it.' : '');
+  { const issues = S.style === 'full' ? [] : GC.check({ bg: S.bg || (card ? '#ffffff' : '#0c0c0d'), ink: S.ink, acc: S.acc }), w = $('colorWarn'); w.textContent = ''; w.hidden = !issues.length;
+    for (const x of issues) { const line = document.createElement('div'); line.append(`${x.pair}: ${x.ratio.toFixed(1)}:1, needs ${x.need}:1${x.key === 'ink' ? ' to read on a phone' : ''}.`);
+      const fb = document.createElement('button'); fb.className = 'btn small'; fb.textContent = 'Fix'; fb.onclick = () => { S[x.key] = x.fix(); refreshSwatches(); markPreset(); colourPicked(); }; line.append(fb); w.append(line); } }
+  layoutChanged(); updateXNote(); saveState();
+}
+function drawPreview(i) {
+  const F = (window.GroklyMusic && GroklyMusic.feats(S.pcm, FPS)) || S.feats; // Background music: the art follows voice + music once the mix is analysed
+  if (!pv.e || !F) return; i = Math.max(0, Math.min(F.length - 1, i));
+  const f = F[i] || idle;
+  if (picIsArt() && !mvOn()) pvSrc.step(f, i / FPS);
+  if (mvOn() && S.mvPlan) { pvMix.frame(i, f, i / FPS, !src); markShot(pvMix.shotAt(i)); } // paused: the artworks are not stepped (cheap)
+  lastI = i; pv.e.speaker = speakerAt(i / FPS, S);
+  pv.e.drawFrame(f, i / FPS); checkSubsOverPicture(); drawSubs(pv.cv.getContext('2d'), pv.cv.width, pv.cv.height, i / FPS); drawSel();
+}
+// ---------- Music video: cut between artworks on the beat (music-video.js) ----------
+const pvMix = GroklyMV.makeMixer(GroklyArt.makeSource);
+const mvOn = () => S.mode === 'music';
+const artName = (id) => (GroklyArt.ART.find(([x]) => x === id) || [id, id])[1];
+function mvAuto(seed) { const r = GroklyMV.mulberry32(seed >>> 0), ids = GroklyArt.ART.map(([x]) => x); for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; } return ids.slice(0, 4); }
+const mvArts = () => (S.mv.arts.length >= 2 ? S.mv.arts : mvAuto(S.mv.seed));
+let mvTimer = 0, mvPvTimer = 0;
+function mvRebuild(now) {
+  clearTimeout(mvTimer); if (!mvOn() || !S.feats) return;
+  // the edit itself is instant; loading its artworks waits until the taps stop (each start of a heavy piece costs main-thread time)
+  const go = () => { S.mvPlan = GroklyMV.plan(S.feats, { arts: mvArts(), style: S.mv.style, trans: S.mv.trans, seed: S.mv.seed, fps: FPS }); renderShots(); saveState(); clearTimeout(mvPvTimer); mvPvTimer = setTimeout(setupPreview, 350); };
+  if (now) go(); else mvTimer = setTimeout(go, 350); // taps in a row (artworks, cut style) make one new edit
+}
+function seekTo(sec) { const playing = !!src; if (playing) stop(); pausedAt = Math.max(0, Math.min(S.pcm.length / SR - 0.05, sec)); drawPreview(Math.round(pausedAt * FPS)); if (playing) $('play').click(); }
+$('wave').addEventListener('click', (ev) => { const r = $('wave').getBoundingClientRect(); seekTo(((ev.clientX - r.left) / r.width) * (S.pcm.length / SR)); });
+$('wave').style.cursor = 'pointer'; $('wave').title = 'Click to play from here';
+$('mvShots').addEventListener('click', (ev) => { const d = ev.target.closest('[data-k]'); if (d && S.mvPlan) seekTo(S.mvPlan.shots[+d.dataset.k].start / FPS); });
+function renderShots() {
+  const P = S.mvPlan, box = $('mvShots'); box.innerHTML = ''; if (!P) return;
+  $('mvNote').textContent = (P.beat ? `${Math.round(P.bpm)} BPM · ` : 'No steady beat found, so the cuts follow the strongest sounds · ') + `${P.shots.length} shot${P.shots.length > 1 ? 's' : ''} · ${GroklyMV.STYLES[P.style].label.toLowerCase()} cuts`;
+  // times in tenths of a second; shots that start after the free video's end are dimmed and marked as not included
+  const cap = window.GroklyPass ? freeCap() : 30, fmtT1 = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; let nIn = 0;
+  P.shots.forEach((x, k) => { const d = document.createElement('div'), im = document.createElement('img'), t = x.start / FPS, out = cap > 0 && t >= cap; im.src = `art/_thumbs/${x.art}.jpg`; im.alt = artName(x.art); im.loading = 'lazy';
+    d.title = `${artName(x.art)} from ${fmtT1(t)}` + (out ? ` · not in the free ${cap} s video` : ''); d.append(im, fmtT1(t)); d.dataset.k = k; if (out) { d.style.opacity = '0.4'; d.dataset.out = '1'; } else nIn++; box.append(d); });
+  if (cap > 0 && nIn < P.shots.length) $('mvNote').textContent += ` · the free ${cap} s video has the first ${nIn}`;
+  $('mvBack').disabled = !S.mv.hist.length; mvShotNow = -1;
+}
+let mvShotNow = -1;
+function markShot(k) { if (k === mvShotNow) return; mvShotNow = k; const box = $('mvShots'); for (const d of box.children) d.classList.toggle('now', +d.dataset.k === k); }
+function buildMvArts() {
+  const box = $('mvArts'); box.innerHTML = '';
+  for (const [id, name] of GroklyArt.ART) { const b = document.createElement('button'), im = document.createElement('img'); im.src = `art/_thumbs/${id}.jpg`; im.alt = ''; im.loading = 'lazy'; b.append(im, name); b.dataset.a = id;
+    b.setAttribute('aria-pressed', String(S.mv.arts.includes(id)));
+    b.onclick = () => { const i = S.mv.arts.indexOf(id); if (i >= 0) S.mv.arts.splice(i, 1); else if (S.mv.arts.length < 6) S.mv.arts.push(id); else { $('mvCount').textContent = 'Up to 6 artworks. Remove one first.'; return; } markMvArts(); mvRebuild(); };
+    box.append(b); }
+  markMvArts();
+}
+// a tap only updates the buttons' state; the grid itself is built once
+function markMvArts() {
+  for (const b of $('mvArts').children) b.setAttribute('aria-pressed', String(S.mv.arts.includes(b.dataset.a)));
+  $('mvCount').textContent = S.mv.arts.length >= 2 ? `${S.mv.arts.length} artworks` : S.mv.arts.length ? 'Pick at least one more (or Milani picks 4 for you).' : 'None picked: Milani picks 4 for you.';
+}
+$('mvPick').onclick = () => { S.mv.seed = (Math.random() * 2 ** 31) >>> 0; S.mv.arts = mvAuto(S.mv.seed); buildMvArts(); mvRebuild(true); };
+segGroup('mvStyle', 'v', (v) => { S.mv.style = v; mvRebuild(); });
+segGroup('mvTrans', 'v', (v) => { S.mv.trans = v; mvRebuild(); });
+$('mvGen').onclick = () => { S.mv.hist.push(S.mv.seed); if (S.mv.hist.length > 20) S.mv.hist.shift(); S.mv.seed = (Math.random() * 2 ** 31) >>> 0; mvRebuild(true); };
+$('mvBack').onclick = () => { if (!S.mv.hist.length) return; S.mv.seed = S.mv.hist.pop(); mvRebuild(true); };
+function setMode(m, quiet) {
+  S.mode = m === 'music' ? 'music' : 'voice'; setSeg('mode', 'm', S.mode); const mus = mvOn();
+  $('mvTab').hidden = !mus; $('h-sound').textContent = mus ? '1 · Your music' : '1 · Your sound'; $('rec').hidden = mus;
+  $('upload').lastChild.textContent = mus ? 'Upload music' : 'Upload audio or video';
+  $('audioC').hidden = mus; // Polish my voice and Trim silences are voice tools
+  if (mus && !quiet && S.style !== 'full') { S.voiceStyle = S.style; selectStyle('full'); } // the artwork is the hero: Full picture (any template can still be picked)
+  if (!mus && !quiet && S.style === 'full' && S.voiceStyle) { selectStyle(S.voiceStyle); S.voiceStyle = null; }
+  updateTrimBox(); updateCapNote();
+  if (mus && !quiet) { // music already has music: no background music, and no voice polish by default (export is set to −14 LUFS instead)
+    if (window.GroklyMusic && GroklyMusic.on) GroklyMusic.setOn(false);
+    if (window.GroklyPolish && GroklyPolish.on) GroklyPolish.set({ on: false });
+    document.querySelector('.tools [data-p="mv"]').click();
+  }
+  if (!mus) { pvMix.destroy(); pvMix.__key = ''; S.mvPlan = null; if (!$('p-mv').hidden) document.querySelector('.tools [data-p="tpl"]').click(); }
+  setSeg('mvStyle', 'v', S.mv.style); setSeg('mvTrans', 'v', S.mv.trans); buildMvArts(); saveState();
+  if (mus) mvRebuild(true); else setupPreview();
+}
+segGroup('mode', 'm', (v) => setMode(v));
+segGroup('wmStyle', 'v', (v) => { S.wmStyle = v; saveState(); setupPreview(); });
+// the signature for the optional signature watermark: its single path, drawn with Path2D in the automatic watermark colour
+fetch('brand/signature.svg').then((r) => (r.ok ? r.text() : '')).then((t) => { const m = /\sd="([^"]+)"/.exec(t); if (!m) return; SIG = { d: m[1] }; $('wmStyleRow').hidden = false; setSeg('wmStyle', 'v', S.wmStyle || 'sig'); if (S.wmStyle !== 'text') setupPreview(); }).catch(() => {});
+if (window.GroklyPass && GroklyPass.onChange) GroklyPass.onChange(() => { updateTrimBox(); updateCapNote(); }); // team A: free window / note follow the credits
+// ---------- drag anything on the preview to move it ----------
+// Each template reports its items ({ id, x, y, w, h } in canvas pixels) after every frame; the subtitles add their own box.
+// Moves are stored as offsets (fraction of width / height) per template + shape, so preview and export match at any resolution.
+let lastI = 0, sel = null, drag = null, subCheck = true;
+// "Plain" subtitles over an artwork / background image / Full picture: if the text colour reaches < 4.5:1 against the 10th-percentile pixel
+// under the subtitle area, switch the look to Box (spec colour-harmony 4.3) and say why
+function checkSubsOverPicture() {
+  if (!subCheck || !subsBox || S.subLook !== 'plain' || !(picIsArt() || S.bgImage || S.style === 'full')) return; subCheck = false;
+  try { const g = pv.cv.getContext('2d'), b = subsBox, d = g.getImageData(Math.max(0, b.x | 0), Math.max(0, b.y | 0), Math.max(1, b.w | 0), Math.max(1, b.h | 0)).data, txt = S.subColor && S.subColor !== 'auto' ? S.subColor : S.ink || '#ffffff', rs = [];
+    for (let k = 0; k < d.length; k += 4 * 7) rs.push(GC.contrast(txt, '#' + [d[k], d[k + 1], d[k + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')));
+    rs.sort((a, b2) => a - b2); if (rs.length && rs[Math.floor(rs.length * 0.1)] < 4.5) { S.subLook = 'box'; setSeg('subLook', 'v', 'box'); saveState(); $('sttNote').textContent = 'The subtitles were hard to read over the picture, so they now have a box (Look: Box).'; }
+  } catch {}
+}
+const speakerAt = (t, st) => { if (!st.guest) return null; let s = null; for (const x of st.subs) if (t >= x.start && t < x.end && x.text.trim() && (!s || x.start >= s.start)) s = x; return s ? s.who || 'host' : null; };
+const ITEM_NAMES = { background: 'Background', frame: 'Frame', photo: 'Host photo', guest: 'Guest photo', title: 'Title', name: 'Name', wave: 'Sound wave', wave2: 'Bars', wave3: 'Shapes', chip: 'Badge', subs: 'Subtitles' };
+const SMIN = 0.3, SMAX = 3; // scale limits
+function hitItems() { const its = pv.e && pv.e.items ? [...pv.e.items] : []; if (subsBox) its.push({ id: 'subs', ...subsBox }); return its; }
+function canvasPt(ev) { const r = pv.cv.getBoundingClientRect(); return { x: ((ev.clientX - r.left) * pv.cv.width) / r.width, y: ((ev.clientY - r.top) * pv.cv.height) / r.height }; }
+// every item can be touched in a box of at least 44 CSS px around it, even a tiny title; its × and corner handle sit outside that box
+const cssK = () => pv.cv.width / Math.max(1, pv.cv.getBoundingClientRect().width);
+const tgt = (it) => { const m = 44 * cssK(), w = Math.max(it.w, m), h = Math.max(it.h, m); return { x: it.x + it.w / 2 - w / 2, y: it.y + it.h / 2 - h / 2, w, h }; };
+function hitAt(p) { // among the items whose touch box holds the point: the one whose own box is nearest (inside = 0), then the smallest
+  let best = null, bd = 0; for (const it of hitItems()) { const b = tgt(it); if (!(p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h)) continue;
+    const d = Math.hypot(Math.max(it.x - p.x, 0, p.x - it.x - it.w), Math.max(it.y - p.y, 0, p.y - it.y - it.h));
+    if (!best || d < bd - 0.5 || (Math.abs(d - bd) <= 0.5 && it.w * it.h < best.w * best.h)) { best = it; bd = d; } }
+  return best; }
+// the × (delete) and the corner handle (scale) of the selected item, in canvas pixels; ≥ 24 CSS px (32 on touch screens)
+function controls(it) {
+  const rad = ((coarse ? 32 : 24) / 2) * cssK(), W = pv.cv.width, H = pv.cv.height, cl = (v, a, b) => Math.max(a, Math.min(b, v)), T = tgt(it), g = rad * 0.15, sp = rad * 2.3;
+  const inF = (q) => q.x >= rad - 0.5 && q.x <= W - rad + 0.5 && q.y >= rad - 0.5 && q.y <= H - rad + 0.5, outT = (q) => q.x < T.x - rad * 0.6 || q.x > T.x + T.w + rad * 0.6 || q.y < T.y - rad * 0.6 || q.y > T.y + T.h + rad * 0.6;
+  // outside the item's touch box: in a column on its right, else its left (× on top, handle below), else in a row above / below it
+  const col = (x) => { let a = cl(T.y + rad, rad, H - rad), b = cl(T.y + T.h - rad, rad, H - rad); if (b - a < sp) { b = Math.min(H - rad, a + sp); a = b - sp; } return [{ x, y: a }, { x, y: b }]; };
+  const row = (y) => { let b = cl(T.x + T.w - rad, rad, W - rad), a = b - sp; if (a < rad) { a = rad; b = a + sp; } return [{ x: b, y }, { x: a, y }]; };
+  for (const [del, grip] of [col(T.x + T.w + rad + g), col(T.x - rad - g), row(T.y - rad - g), row(T.y + T.h + rad + g)]) if (inF(del) && inF(grip) && outT(del) && outT(grip)) return { rad, del, grip };
+  // full-frame items: inside the top-right corner
+  let dy = cl(it.y + rad, rad, H - rad), gy = cl(it.y + it.h - rad, rad, H - rad); if (gy - dy < sp) { gy = cl(dy + sp, rad, H - rad); dy = gy - sp; }
+  return { rad, del: { x: cl(it.x + it.w - rad, rad, W - rad), y: dy }, grip: { x: cl(it.x + it.w - rad, rad, W - rad), y: gy } };
+}
+function drawSel() {
+  if (!sel || (busy && !BG_EXPORT)) return; const it = hitItems().find((x) => x.id === sel); if (!it) return;
+  const g = pv.cv.getContext('2d'), W = pv.cv.width, H = pv.cv.height, c = controls(it), lw = Math.max(1.5, c.rad / 8); g.save(); g.lineWidth = lw; g.setLineDash([lw * 3, lw * 2]);
+  g.strokeStyle = 'rgba(255,255,255,.9)'; g.strokeRect(it.x - 3, it.y - 3, it.w + 6, it.h + 6); g.strokeStyle = 'rgba(0,120,170,.95)'; g.lineDashOffset = lw * 2.5; g.strokeRect(it.x - 3, it.y - 3, it.w + 6, it.h + 6);
+  if (drag && drag.guide) { g.setLineDash([]); g.strokeStyle = 'rgba(236,122,106,.95)'; g.lineWidth = lw; g.beginPath(); if (drag.guide.x != null) { g.moveTo(drag.guide.x, 0); g.lineTo(drag.guide.x, H); } if (drag.guide.y != null) { g.moveTo(0, drag.guide.y); g.lineTo(W, drag.guide.y); } g.stroke(); }
+  g.setLineDash([]);
+  // × delete
+  g.fillStyle = '#e2614f'; g.beginPath(); g.arc(c.del.x, c.del.y, c.rad * 0.8, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = c.rad * 0.16; g.lineCap = 'round';
+  const q = c.rad * 0.3; g.beginPath(); g.moveTo(c.del.x - q, c.del.y - q); g.lineTo(c.del.x + q, c.del.y + q); g.moveTo(c.del.x + q, c.del.y - q); g.lineTo(c.del.x - q, c.del.y + q); g.stroke();
+  // ◢ scale handle
+  g.fillStyle = '#00506a'; g.beginPath(); g.arc(c.grip.x, c.grip.y, c.rad * 0.8, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = c.rad * 0.13;
+  g.beginPath(); g.moveTo(c.grip.x - q, c.grip.y + q * 0.2); g.lineTo(c.grip.x - q, c.grip.y + q); g.lineTo(c.grip.x - q * 0.2, c.grip.y + q); g.moveTo(c.grip.x + q, c.grip.y - q * 0.2); g.lineTo(c.grip.x + q, c.grip.y - q); g.lineTo(c.grip.x + q * 0.2, c.grip.y - q); g.moveTo(c.grip.x - q, c.grip.y + q); g.lineTo(c.grip.x + q, c.grip.y - q); g.stroke();
+  g.restore();
+}
+const near = (p, c, r) => Math.hypot(p.x - c.x, p.y - c.y) <= r;
+const L0 = (id) => layoutOf()[id] || {};
+function setL(id, patch) { const L = layoutOf(), o = { ...(L[id] || {}), ...patch }; for (const k of ['x', 'y']) if (!o[k]) delete o[k]; if (!o.s || Math.abs(o.s - 1) < 0.01) delete o.s; if (!o.hide) delete o.hide; if (Object.keys(o).length) L[id] = o; else delete L[id]; }
+function moveItem(id, nx, ny, box) { // box = the item's box at offset 0 (already scaled); snaps to the centre, the edges and its own original place
+  const W = pv.cv.width, H = pv.cv.height, tx = W * 0.012, ty = H * 0.012, m = Math.min(W, H) * 0.04, guide = {};
+  let x = box.x + nx * W, y = box.y + ny * H;
+  if (Math.abs(nx * W) < tx && Math.abs(ny * H) < ty) { x = box.x; y = box.y; }
+  else {
+    if (Math.abs(x + box.w / 2 - W / 2) < tx) { x = W / 2 - box.w / 2; guide.x = W / 2; } else if (Math.abs(x - m) < tx) { x = m; guide.x = m; } else if (Math.abs(x + box.w - (W - m)) < tx) { x = W - m - box.w; guide.x = W - m; }
+    if (Math.abs(y + box.h / 2 - H / 2) < ty) { y = H / 2 - box.h / 2; guide.y = H / 2; } else if (Math.abs(y - m) < ty) { y = m; guide.y = m; } else if (Math.abs(y + box.h - (H - m)) < ty) { y = H - m - box.h; guide.y = H - m; }
+  }
+  setL(id, { x: +((x - box.x) / W).toFixed(4), y: +((y - box.y) / H).toFixed(4) });
+  if (drag) drag.guide = guide.x != null || guide.y != null ? guide : null;
+}
+function hideItem(id) { setL(id, { hide: true }); sel = null; pv.cv.style.touchAction = 'pan-y'; drag = null; saveState(); layoutChanged(); redrawLayout(); }
+const redrawLayout = () => { if (pv.e && pv.e.items !== undefined) drawPreview(src ? curFrame() : lastI); };
+pv.cv.tabIndex = 0; pv.cv.setAttribute('aria-roledescription', 'editable preview');
+pv.cv.setAttribute('aria-label', 'Preview. Press Enter to select an item, Tab to go to the next item, arrows to move, plus and minus to resize, Delete to hide, Escape to finish.');
+const coarse = matchMedia('(pointer: coarse)').matches;
+pv.cv.title = coarse ? 'Tap an item to select it, then drag, pinch or use its × and corner handle.' : 'Drag anything to move it. Select it to delete (×) or resize (corner handle). Arrow keys move, + and − resize, Delete hides.';
+const announce = (t) => { $('pvLive').textContent = t; };
+const selectItem = (id) => { sel = id; pv.cv.style.touchAction = sel ? 'none' : 'pan-y'; if (id) announce(`${ITEM_NAMES[id] || id} selected`); redrawLayout(); };
+// keep each item wholly inside the frame (the background: ~80 %), text within the frame margins, and text off the watermark
+const TEXT_IDS = ['title', 'name', 'subs', 'chip'];
+function clampItem(id, base) { // base = the item's box at offset 0 and scale 1
+  const L = layoutOf(), o = L[id]; if (!o || !base) return; const W = pv.cv.width, H = pv.cv.height, m = Math.min(W, H) * 0.04;
+  let k = o.s || 1; if (TEXT_IDS.includes(id)) k = Math.min(k, Math.max(SMIN, Math.min((W - 2 * m) / Math.max(1, base.w), (H - 2 * m) / Math.max(1, base.h)))); // text stays inside the frame k = Math.max(SMIN, Math.min(SMAX, k));
+  if (id !== 'background') k = Math.min(k, Math.max(SMIN, Math.min(W / Math.max(1, base.w), H / Math.max(1, base.h)))); // nothing but the background grows past the frame
+  const w = base.w * k, h = base.h * k, bx = base.x + base.w / 2, by = base.y + base.h / 2;
+  let cx = bx + (o.x || 0) * W, cy = by + (o.y || 0) * H;
+  const f = id === 'background' ? 0.4 : 0.5; // everything but the background stays wholly inside the frame
+  if (w < W) cx = Math.max(f * w, Math.min(W - f * w, cx)); if (h < H) cy = Math.max(f * h, Math.min(H - f * h, cy));
+  if (TEXT_IDS.includes(id) || id === 'guest') { const p = clearOfMark(pv.cv, cx - w / 2, cy - h / 2, w, h, m * 0.4); cx = p.x + w / 2; cy = p.y + h / 2; } // and off the watermark
+  setL(id, { s: +k.toFixed(3), x: +((cx - bx) / W).toFixed(4), y: +((cy - by) / H).toFixed(4) });
+}
+const baseOf = (id) => { const it = hitItems().find((x) => x.id === id); if (!it) return null; const o = L0(id), k = o.s || 1, W = pv.cv.width, H = pv.cv.height, cx = it.x + it.w / 2 - (o.x || 0) * W, cy = it.y + it.h / 2 - (o.y || 0) * H; return { x: cx - it.w / k / 2, y: cy - it.h / k / 2, w: it.w / k, h: it.h / k }; };
+const pts = new Map(); // active pointers (two fingers = pinch to resize the selected item)
+let tap = null; // touch: a tap selects; a swipe on the preview scrolls the page (nothing moves until an item is selected)
+pv.cv.style.touchAction = 'pan-y';
+pv.cv.addEventListener('pointerdown', (ev) => {
+  if (busy && !BG_EXPORT) return; const p = canvasPt(ev); pts.set(ev.pointerId, p);
+  if (ev.pointerType !== 'touch') pv.cv.focus({ preventScroll: true }); // so Delete / arrows / + / − work right after a click
+  const cur = sel && hitItems().find((x) => x.id === sel);
+  if (pts.size === 2 && cur) { const [a, b] = [...pts.values()]; drag = { mode: 'pinch', id: sel, d0: Math.hypot(a.x - b.x, a.y - b.y), s0: L0(sel).s || 1, base: baseOf(sel), moved: true }; tap = null; return; }
+  if (cur) { const c = controls(cur);
+    if (near(p, c.grip, c.rad)) { ev.preventDefault(); pv.cv.setPointerCapture(ev.pointerId); const cx = cur.x + cur.w / 2, cy = cur.y + cur.h / 2; drag = { mode: 'scale', id: sel, cx, cy, d0: Math.max(4, Math.hypot(p.x - cx, p.y - cy)), s0: L0(sel).s || 1, base: baseOf(sel), moved: false }; return; }
+    if (near(p, c.del, c.rad)) { ev.preventDefault(); return hideItem(sel); } }
+  const it = hitAt(p);
+  if (ev.pointerType === 'touch' && (!it || it.id !== sel)) { tap = { p, id: it ? it.id : null, t: performance.now() }; return; } // let the browser scroll; decide on pointerup
+  ev.preventDefault(); pv.cv.setPointerCapture(ev.pointerId);
+  if (!it) { drag = null; return selectItem(null); }
+  if (it.id !== sel) selectItem(it.id);
+  const o = L0(it.id), W = pv.cv.width, H = pv.cv.height;
+  drag = { mode: 'move', id: it.id, p0: p, o0: { x: o.x || 0, y: o.y || 0 }, box: { x: it.x - (o.x || 0) * W, y: it.y - (o.y || 0) * H, w: it.w, h: it.h }, base: baseOf(it.id), moved: false };
+  pv.cv.classList.add('dragging');
+});
+pv.cv.addEventListener('pointermove', (ev) => {
+  const p = canvasPt(ev); if (pts.has(ev.pointerId)) pts.set(ev.pointerId, p);
+  if (tap && Math.hypot(p.x - tap.p.x, p.y - tap.p.y) > 12) tap = null; // it became a swipe
+  if (!drag) { let cur = 'default'; if (!busy || BG_EXPORT) { const it = sel && hitItems().find((x) => x.id === sel), c = it && controls(it); cur = c && near(p, c.grip, c.rad) ? 'nwse-resize' : c && near(p, c.del, c.rad) ? 'pointer' : hitAt(p) ? 'move' : 'default'; } pv.cv.style.cursor = cur; return; }
+  const W = pv.cv.width, H = pv.cv.height;
+  if (drag.mode === 'pinch') { if (pts.size < 2) return; const [a, b] = [...pts.values()]; setL(drag.id, { s: Math.max(SMIN, Math.min(SMAX, (drag.s0 * Math.hypot(a.x - b.x, a.y - b.y)) / Math.max(4, drag.d0))) }); }
+  else if (drag.mode === 'scale') { drag.moved = true; setL(drag.id, { s: +Math.max(SMIN, Math.min(SMAX, (drag.s0 * Math.hypot(p.x - drag.cx, p.y - drag.cy)) / drag.d0)).toFixed(3) }); }
+  else { drag.moved = true; moveItem(drag.id, drag.o0.x + (p.x - drag.p0.x) / W, drag.o0.y + (p.y - drag.p0.y) / H, drag.box); }
+  clampItem(drag.id, drag.base); redrawLayout();
+});
+const endDrag = (ev) => {
+  pts.delete(ev.pointerId);
+  if (tap && ev.type === 'pointerup') { const t = tap; tap = null; selectItem(t.id); return; }
+  tap = null; if (!drag || (drag.mode === 'pinch' && pts.size)) return; const moved = drag.moved; drag = null; pv.cv.classList.remove('dragging'); if (moved) { saveState(); layoutChanged(); } redrawLayout();
+};
+pv.cv.addEventListener('pointerup', endDrag); pv.cv.addEventListener('pointercancel', endDrag);
+// keyboard: Enter / Space selects, Tab / Shift-Tab steps through the items while one is selected, Escape finishes
+pv.cv.addEventListener('keydown', (ev) => {
+  if (busy && !BG_EXPORT) return; const ids = hitItems().map((x) => x.id);
+  if (!sel) { if ((ev.key === 'Enter' || ev.key === ' ') && ids.length) { ev.preventDefault(); selectItem(ids[ids.length - 1]); } return; }
+  if (ev.key === 'Escape') { selectItem(null); return announce('Done editing'); }
+  if (ev.key === 'Tab') { ev.preventDefault(); const i = ids.indexOf(sel); return selectItem(ids[(i + (ev.shiftKey ? -1 : 1) + ids.length) % ids.length]); }
+  if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); announce(`${ITEM_NAMES[sel] || sel} hidden`); return hideItem(sel); }
+  const base = baseOf(sel);
+  if (ev.key === '+' || ev.key === '=' || ev.key === '-') { ev.preventDefault(); setL(sel, { s: Math.max(SMIN, Math.min(SMAX, (L0(sel).s || 1) * (ev.key === '-' ? 1 / 1.08 : 1.08))) }); clampItem(sel, base); saveState(); layoutChanged(); return redrawLayout(); }
+  if (!/^Arrow/.test(ev.key)) return;
+  const k = ev.shiftKey ? 0.02 : 0.004, o = L0(sel);
+  setL(sel, { x: (o.x || 0) + (ev.key === 'ArrowLeft' ? -k : ev.key === 'ArrowRight' ? k : 0), y: (o.y || 0) + (ev.key === 'ArrowUp' ? -k : ev.key === 'ArrowDown' ? k : 0) });
+  clampItem(sel, base); ev.preventDefault(); saveState(); layoutChanged(); redrawLayout();
+});
+// hidden items can be brought back one by one, or all at once; Reset layout restores positions, sizes and hidden items
+function layoutChanged() {
+  const L = S.layout[layoutKey()] || {}, hidden = Object.keys(L).filter((k) => L[k].hide), box = $('hiddenList');
+  $('resetLayout').hidden = !Object.keys(L).length; box.hidden = !hidden.length; box.textContent = '';
+  if (!hidden.length) return; box.append('Hidden: ');
+  for (const id of hidden) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = `Show ${(ITEM_NAMES[id] || id).toLowerCase()}`; b.onclick = () => { setL(id, { hide: false }); saveState(); layoutChanged(); redrawLayout(); }; box.append(b); }
+  if (hidden.length > 1) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = 'Restore all'; b.onclick = () => { for (const id of hidden) setL(id, { hide: false }); saveState(); layoutChanged(); redrawLayout(); }; box.append(b); }
+}
+$('resetLayout').onclick = () => { delete S.layout[layoutKey()]; sel = null; saveState(); layoutChanged(); setupPreview(); };
+let ac = null, src = null, t0 = 0, raf = 0;
+let idleI = 0, idleNext = 0;
+function idleTick(ts) {
+  if (!src && (picIsArt() || mvOn()) && !document.hidden && S.feats && ts >= idleNext) {
+    const c0 = performance.now(); if (mvOn()) { if (pvMix.dirty) drawPreview(Math.round(pausedAt * FPS)); } /* Music video, paused: redraw only when an artwork finished loading */ else { idleI = (idleI + 1) % S.feats.length; drawPreview(idleI); } idleNext = ts + Math.max(33, (performance.now() - c0) * 3);
+  }
+  requestAnimationFrame(idleTick);
+}
+const curFrame = () => (src ? Math.floor((ac.currentTime - t0 - (ac.outputLatency || 0)) * FPS) : 0); // what the speaker plays now
+function stop() { if (src) { try { src.stop(); } catch {} src = null; } if (window.GroklyMusic) GroklyMusic.stopPreview(); /* Background music */ cancelAnimationFrame(raf); $('playIcon').setAttribute('d', 'M5 3l12 7-12 7z'); $('play').setAttribute('aria-label', 'Play preview'); }
+let pausedAt = 0; // seconds: Pause keeps the position, Play resumes from it, a click on the waveform or a shot seeks
+$('play').onclick = () => {
+  if (src) { pausedAt = Math.max(0, curFrame()) / FPS; return stop(); }
+  // Music video: the shot that plays first is loaded before the music starts (else the picture stays a still thumbnail for seconds)
+  if (mvOn() && S.mvPlan) { const i0 = Math.round((pausedAt < S.pcm.length / SR - 0.2 ? pausedAt : 0) * FPS);
+    if (!pvMix.readyAt(i0)) { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume(); /* inside the tap, for Safari */ if (mvWarming) { mvWarming = false; $('play').removeAttribute('aria-busy'); return; } /* a second tap while it loads: do not start */ mvWarming = true; const my = ++mvWarmId;
+      const note = /^Getting the first/.test($('mvNote').textContent) ? mvNoteSaved : (mvNoteSaved = $('mvNote').textContent); $('mvNote').textContent = 'Getting the first artwork ready…'; $('play').setAttribute('aria-busy', 'true');
+      Promise.race([pvMix.warm(i0), new Promise((r) => setTimeout(r, 8000))]).then(() => { if (my !== mvWarmId) return; const go = mvWarming; mvWarming = false; $('play').removeAttribute('aria-busy'); if ($('mvNote').textContent === 'Getting the first artwork ready…') $('mvNote').textContent = note; if (go && mvOn() && !src) mvPlayNow(); });
+      return; } }
+  mvPlayNow();
+};
+let mvWarming = false, mvWarmId = 0, mvNoteSaved = '';
+function mvPlayNow() {
+  const playFrom = pausedAt < S.pcm.length / SR - 0.2 ? pausedAt : 0; pausedAt = playFrom;
+  ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume();
+  const b = ac.createBuffer(1, S.pcm.length + (window.GroklyMusic ? GroklyMusic.tailSamples(SR) : 0), SR); b.getChannelData(0).set(S.pcm); src = ac.createBufferSource(); src.buffer = b; src.connect(ac.destination); // Background music: + fade-out tail
+  const me = src; t0 = ac.currentTime + .05 - playFrom; src.start(t0 + playFrom, playFrom); /* team A: resume at the paused position */ if (window.GroklyMusic) GroklyMusic.startPreview(ac, t0, S.pcm); /* Background music */ src.onended = () => { if (src && src !== me) return; if (src) { stop(); pausedAt = 0; } drawPreview(0); }; // only the node that ended
+  $('playIcon').setAttribute('d', 'M5 3h4v14H5zM11 3h4v14h-4z'); $('play').setAttribute('aria-label', 'Pause preview');
+  const loop = () => { drawPreview(curFrame()); raf = requestAnimationFrame(loop); }; loop();
+};
+
+// ---------- editor tools ----------
+document.querySelectorAll('.tools [role=tab]').forEach((t) => (t.onclick = () => {
+  document.querySelectorAll('.tools [role=tab]').forEach((x) => { const on = x === t; x.setAttribute('aria-selected', String(on)); x.tabIndex = on ? 0 : -1; });
+  document.querySelectorAll('[role=tabpanel]').forEach((p) => (p.hidden = p.id !== 'p-' + t.dataset.p)); store.set('grokly.tab', t.dataset.p);
+}));
+// ARIA tabs pattern: one tab stop; Left/Right (and Up/Down) move between visible tabs, Home/End jump to the ends.
+document.querySelectorAll('.tools [role=tab]').forEach((t) => {
+  t.id = t.id || 'tab-' + t.dataset.p; const p = $('p-' + t.dataset.p); t.setAttribute('aria-controls', 'p-' + t.dataset.p);
+  if (p) { p.setAttribute('aria-labelledby', t.id); p.tabIndex = 0; } t.tabIndex = t.getAttribute('aria-selected') === 'true' ? 0 : -1;
+});
+document.querySelector('.tools[role=tablist]').addEventListener('keydown', (e) => {
+  const tabs = [...document.querySelectorAll('.tools [role=tab]')].filter((x) => !x.hidden), i = tabs.indexOf(document.activeElement); if (i < 0) return;
+  const k = e.key, n = k === 'ArrowRight' || k === 'ArrowDown' ? i + 1 : k === 'ArrowLeft' || k === 'ArrowUp' ? i - 1 : k === 'Home' ? 0 : k === 'End' ? tabs.length - 1 : null;
+  if (n === null) return; e.preventDefault(); const t = tabs[(n + tabs.length) % tabs.length]; t.focus(); t.click();
+});
+function selectStyle(id) {
+  S.style = id; sel = null; store.set('grokly.style', id);
+  document.querySelectorAll('.styles .chip').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.s === id))); setupPreview();
+}
+async function buildChips() {
+  const groups = {}; document.querySelectorAll('.styles').forEach((b) => { b.innerHTML = ''; groups[b.dataset.group] = b; });
+  const list = [...CARDS.map(([n, f]) => ['card:' + n, n, f]), ...WAVES.map((n) => [n, n === 'full' ? 'full picture' : n, 'wave'])];
+  for (const [id, label, grp] of list) {
+    const b = document.createElement('button'); b.className = 'chip'; b.dataset.s = id; b.setAttribute('aria-pressed', String(id === S.style));
+    const c = document.createElement('canvas'), l = document.createElement('span'); l.textContent = label; b.append(c, l); b.onclick = () => selectStyle(id); groups[grp].append(b);
+  }
+  const sample = { ...idle, pulse: .5, bands: idle.bands.map((b, i) => Math.min(1, b + .35 * Math.abs(Math.sin(i * 1.3)))) };
+  const tw = document.createElement('canvas'), tc = document.createElement('canvas'), tf = document.createElement('canvas'), ew = E.makeWave(tw), ec = E.makeCards(tc), ef = GroklyArt.makeFull(tf);
+  const thumbPic = picIsArt() ? `art/_thumbs/${S.pic.id}.jpg` : S.avatar;
+  for (const b of document.querySelectorAll('.styles .chip')) {
+    const id = b.dataset.s, card = isCard(id), e = card ? ec : id === 'full' ? ef : ew, cv = card ? tc : id === 'full' ? tf : tw, sz = card ? CARD_SIZE[cardFmt(id)] : FMT.post;
+    await e.setup({ style: id.replace('card:', ''), title: 'The Sound of Rain', sub: 'Subtitle', avatar: id === 'full' ? thumbPic : S.avatar, bgImage: picIsArt() ? thumbPic : S.bgImage, guest: S.guest, theme: S.bg && luminance(S.bg) > 0.5 ? 'light' : 'dark', paper: S.bg, ink: S.ink, accent: S.acc, W: sz[0] / 4, H: sz[1] / 4, keepSize: true, seed: 7, watermark: '' });
+    e.drawFrame(sample, 1); const t = b.querySelector('canvas'); t.width = cv.width; t.height = cv.height; t.getContext('2d').drawImage(cv, 0, 0);
+  }
+}
+function segGroup(id, attr, onPick) {
+  $(id).onclick = (e) => { const b = e.target.closest('button'); if (!b || b.dataset[attr] == null) return; [...$(id).children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); onPick(b.dataset[attr]); };
+}
+const setSeg = (id, attr, v) => [...$(id).children].forEach((x) => x.setAttribute('aria-pressed', String(x.dataset[attr] === String(v))));
+segGroup('fmt', 'f', (v) => { S.fmt = v; sel = null; setupPreview(); });
+function buildArtChips() {
+  const box = $('artGrid'); box.innerHTML = '';
+  // three groups; any artwork not listed in a group goes to the last one
+  const listed = ART_GROUPS.flatMap((g) => g[1]), all = GroklyArt.ART.map(([x]) => x);
+  const groups = ART_GROUPS.map(([n, ids], i) => [n, ids.filter((x) => all.includes(x)).concat(i === ART_GROUPS.length - 1 ? all.filter((x) => !listed.includes(x)) : [])]);
+  for (const [gname, ids] of groups) {
+   if (!ids.length) continue;
+   const h = document.createElement('div'); h.className = 'artcat'; h.textContent = gname; box.append(h);
+   for (const id of ids) { const title = artTitle(id);
+    const b = document.createElement('button'); b.className = 'chip'; b.dataset.a = id; b.setAttribute('aria-pressed', String(picIsArt() && S.pic.id === id));
+    const im = document.createElement('img'); im.src = `art/_thumbs/${id}.jpg`; im.alt = ''; im.loading = 'lazy';
+    const l = document.createElement('span'); l.textContent = title; b.append(im, l);
+    if (SLOW_ART.includes(id)) { const sm = document.createElement('small'); sm.textContent = 'takes longer'; b.append(sm); }
+    b.onclick = () => pickArt(id); box.append(b);
+   }
+  }
+}
+const ART_GROUPS = [
+  ['Rivers & Trees', ['night-river', 'spring-behind-the-river-v', 'the-last-flower', 'old-tree']],
+  ['Fields & Hills', ['dusk-hills', 'a-field-in-the-wind', 'poppy-map', 'fern']],
+  ['Abstract', ['garden-lights', 'emotions', 'imago', 'hart', 'muz-ii']],
+];
+const SLOW_ART = ['aviary', 'a-field-in-the-wind', 'muz-ii', 'feelings', 'violet-tree', 'old-tree'];
+function pickArt(id) { S.pic = { kind: 'art', id }; S.lastArt = id; idleI = 0; store.set('grokly.pic', id); setupPreview(); buildChips(); }
+function usePhoto() { S.pic = { kind: 'photo' }; store.set('grokly.pic', ''); setupPreview(); buildChips(); }
+$('usePhoto').onclick = usePhoto;
+// Generate: a brand-new version of the chosen artwork; Back walks through earlier ones.
+// History holds each seed once (most recent last), so Back never visits the original twice; versions are numbered in the order they were generated.
+const pushHist = (id, seed) => { const h = (S.artHist[id] = (S.artHist[id] || []).filter((x) => x !== seed)); h.push(seed); if (h.length > 30) h.shift(); };
+function generateArt() {
+  if (!picIsArt()) { const arts = GroklyArt.ART.map(([x]) => x); S.pic = { kind: 'art', id: arts.includes(S.lastArt) ? S.lastArt : arts[0] }; S.lastArt = S.pic.id; store.set('grokly.pic', S.pic.id); buildChips(); }
+  const id = S.pic.id, seed = GroklyArt.randomSeed(); pushHist(id, artSeedOf(id));
+  (S.artVers[id] = S.artVers[id] || []).push(seed); if (S.artVers[id].length > 60) S.artVers[id].shift();
+  S.artSeeds[id] = seed; setupPreview();
+}
+$('artSeed').onclick = generateArt; $('genPreview').onclick = generateArt;
+$('artBack').onclick = () => { if (!picIsArt()) return; const id = S.pic.id, h = S.artHist[id]; if (!h || !h.length) return; S.artSeeds[id] = h.pop(); setupPreview(); };
+$('artSeedReset').onclick = () => { if (!picIsArt()) return; const id = S.pic.id; if (artSeedOf(id) !== GroklyArt.defaultSeed) pushHist(id, artSeedOf(id)); S.artHist[id] = (S.artHist[id] || []).filter((x) => x !== GroklyArt.defaultSeed); S.artSeeds[id] = GroklyArt.defaultSeed; setupPreview(); };
+segGroup('subPos', 'v', (v) => { S.subPos = v; drawPreview(curFrame()); saveState(); });
+segGroup('subLook', 'v', (v) => { S.subLook = v; subCheck = v === 'plain' ? false : true; drawPreview(curFrame()); saveState(); });
+segGroup('quality', 'q', (v) => { S.q = +v; saveState(); });
+$('wm').onchange = (e) => { S.wm = e.target.checked; setupPreview(); };
+if (window.GroklyPass) GroklyPass.onChange(() => setupPreview()); // Grokly Pass: redraw preview when the pass turns on/off
+function fontButtons(id, key) {
+  const box = $(id); box.innerHTML = '';
+  FONTS.forEach(([f, label]) => { const b = document.createElement('button'); b.textContent = label; b.dataset.f = f; b.style.fontFamily = fontStack(f); b.setAttribute('aria-pressed', String(S[key] === f)); b.onclick = () => pickFont(id, f); box.append(b); });
+}
+function pickFont(id, f) { const key = id === 'titleFont' ? 'font' : 'subFont'; S[key] = f; [...$(id).children].forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.f === f))); setupPreview(); }
+function swatches(id, key, withAuto, onPick) {
+  const box = $(id); box.innerHTML = '';
+  const add = (col, label) => { const b = document.createElement('button'); b.style.background = col || 'conic-gradient(#e2614f,#0099cc,#87a29a,#e2614f)'; b.setAttribute('aria-label', label || COLOR_NAMES[col] || col); b.title = label || COLOR_NAMES[col] || col; b.dataset.c = col || ''; b.setAttribute('aria-pressed', String((S[key] || '') === (col || ''))); b.onclick = () => { S[key] = col || null; [...box.children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); onPick(); }; box.append(b); };
+  if (withAuto) add('', 'Automatic'); PALETTE.forEach((c) => add(c));
+  if (S[key] && !PALETTE.includes(S[key])) add(S[key], `Custom colour ${S[key]}`); // a palette, Surprise or Fix colour shows as its own chip
+}
+const typing = {}; ['title', 'name', 'guestName'].forEach((id) => { // one save timer per field, so a quick switch between fields never drops a save
+  const save = () => { clearTimeout(typing[id]); typing[id] = 0; store.set('grokly.' + id, $(id).value); };
+  $(id).oninput = () => { clearTimeout(typing[id]); typing[id] = setTimeout(() => { save(); setupPreview(); }, 150); };
+  $(id).addEventListener('change', save); addEventListener('pagehide', () => { if (typing[id]) save(); });
+});
+$('textSize').oninput = (e) => { S.textScale = e.target.value / 100; $('textSizeVal').textContent = e.target.value + '%'; setupPreview(); };
+$('subSize').oninput = (e) => { S.subScale = e.target.value / 100; $('subSizeVal').textContent = e.target.value + '%'; drawPreview(curFrame()); saveState(); };
+$('avatarBtn').onclick = $('avatarPick').onclick = () => $('avatarFile').click();
+const photoNote = (m) => { $('photoNote').textContent = m; $('photoNote').hidden = !m; };
+$('avatarReset').onclick = () => { S.avatar = defaultAvatar(); S.userPhoto = false; $('avatarImg').src = S.avatar; store.set('grokly.avatar', ''); photoNote(''); usePhoto(); };
+// read a picture file into a data URL (downscaled; transparency kept for PNG/WebP/GIF)
+function readPicture(f, maxSide, done) {
+  const img = new Image(), url = URL.createObjectURL(f); photoNote('');
+  img.onerror = () => { URL.revokeObjectURL(url); photoNote("Couldn't open that picture. Try a JPG, PNG or WebP photo."); };
+  img.onload = () => { const c = document.createElement('canvas'), k = Math.min(1, maxSide / Math.max(img.width, img.height)); c.width = Math.max(1, Math.round(img.width * k)); c.height = Math.max(1, Math.round(img.height * k)); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const alpha = /png|webp|gif|svg/i.test(f.type); let d = alpha ? c.toDataURL('image/webp', .9) : c.toDataURL('image/jpeg', .88); if (alpha && !d.startsWith('data:image/webp')) d = c.toDataURL('image/png');
+    URL.revokeObjectURL(url); done(d, img.width, img.height); };
+  img.src = url;
+}
+const keep = (key, d) => { if (d && d.length > 2.5e6) { store.set(key, ''); return false; } store.set(key, d || ''); return true; }; // localStorage holds ~5 MB in all
+const small = (w, h, what) => (Math.max(w, h) < 400 ? `This ${what} is small (${w}×${h}), so it will look blurry in the video. At least 1000 pixels looks best.` : '');
+$('avatarFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  readPicture(f, 1200, (d, w, h) => { S.avatar = d; S.userPhoto = true; $('avatarImg').src = d; keep('grokly.avatar', d); photoNote(small(w, h, 'photo')); usePhoto(); }); };
+function showGuest() { $('guestImg').hidden = !S.guest; if (S.guest) $('guestImg').src = S.guest; $('guestRemove').hidden = !S.guest; renderLines(); }
+$('guestBtn').onclick = $('guestPick').onclick = () => $('guestFile').click();
+$('guestFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  readPicture(f, 1000, (d, w, h) => { S.guest = d; keep('grokly.guest', d); photoNote(small(w, h, 'photo') || (!$('guestName').value.trim() ? 'Add the guest\'s name in the Text tab.' : '')); showGuest(); setupPreview(); buildChips(); }); };
+$('guestRemove').onclick = () => { S.guest = null; keep('grokly.guest', ''); photoNote(''); showGuest(); setupPreview(); buildChips(); };
+function showBg() { $('bgImg').hidden = !S.bgImage; if (S.bgImage) $('bgImg').src = S.bgImage; $('bgRemove').hidden = !S.bgImage; }
+$('bgBtn').onclick = $('bgPick').onclick = () => $('bgFile').click();
+$('bgFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  readPicture(f, 1600, (d, w, h) => { S.bgImage = d; const ok = keep('grokly.bgimg', d); photoNote((small(w, h, 'image')) + (ok ? '' : ' This image is too big to remember after a reload.') + (picIsArt() ? ' An artwork is picked, so it stays the background; choose “Use my photo instead” in the Art tab to see your image.' : '')); showBg(); setupPreview(); buildChips(); }); };
+$('bgRemove').onclick = () => { S.bgImage = null; keep('grokly.bgimg', ''); photoNote(''); showBg(); setupPreview(); buildChips(); };
+$('dice').onclick = () => {
+  const all = [...CARDS.map(([n]) => 'card:' + n), ...WAVES], pick = (a) => a[Math.floor(Math.random() * a.length)];
+  let st; do st = pick(all); while (st === S.style);
+  S.font = pick(FONTS)[0]; pickFont('titleFont', S.font);
+  surpriseColours(false); uiSound('surprise');
+  selectStyle(st);
+};
+// ---------- colour harmony (colour.js): palettes, seeded Surprise, contrast guard ----------
+const GC = window.GroklyColour;
+function applyColours(c, note) { S.bg = c.bg; S.ink = c.ink; S.acc = c.acc; $('harmonyNote').textContent = note || ''; refreshSwatches(); markPreset(); colourPicked(); }
+function markPreset() { [...$('presets').children].forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.bg === S.bg && b.dataset.ink === S.ink && b.dataset.acc === S.acc))); }
+function pictureSample() { // the picture the palette should harmonise with: the artwork's thumbnail or the background image / photo, 64×64
+  try { const im = picIsArt() ? document.querySelector(`#artGrid .chip[data-a="${S.pic.id}"] img`) : $('bgImg').hidden ? $('avatarImg') : $('bgImg'); if (!im || !im.complete || !im.naturalWidth) return null;
+    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(im, 0, 0, 64, 64); return g.getImageData(0, 0, 64, 64); } catch { return null; }
+}
+function surpriseColours(withNote = true) {
+  S.colourSeed = (Math.random() * 2 ** 32) >>> 0; // stored with the project so a palette can be reproduced
+  const c = GC.surprise(S.colourSeed, { picture: pictureSample(), prev: { acc: S.acc } });
+  applyColours(c, withNote ? `${GC.HARMONY_NAMES[c.harmony] || 'Palette'} colours${pictureSample() ? ', matched to your picture' : ''}.` : '');
+}
+function buildPresets() {
+  const box = $('presets'); box.innerHTML = '';
+  for (const p of GC.PRESETS) { const b = document.createElement('button'); Object.assign(b.dataset, { bg: p.bg, ink: p.ink, acc: p.acc });
+    b.innerHTML = `<i style="background:linear-gradient(135deg, ${p.bg} 0 50%, ${p.ink} 50% 75%, ${p.acc} 75%)"></i>`; b.append(p.name); b.title = `${p.name}: text ${GC.contrast(p.ink, p.bg).toFixed(1)}:1, accent ${GC.contrast(p.acc, p.bg).toFixed(1)}:1`;
+    b.onclick = () => applyColours(p, ''); box.append(b); }
+}
+$('colourSurprise').onclick = () => { surpriseColours(true); uiSound('surprise'); };
+$('colourAuto').onclick = () => applyColours({ bg: null, ink: null, acc: null }, 'Each template uses its own colours.');
+let chipsT = 0; const colourPicked = () => { markPreset(); subCheck = true; setupPreview(); clearTimeout(chipsT); chipsT = setTimeout(buildChips, 400); };
+function refreshSwatches() { swatches('bgColor', 'bg', true, colourPicked); swatches('inkColor', 'ink', true, colourPicked); swatches('accColor', 'acc', true, colourPicked); }
+
+// ---------- export ----------
+async function pickVideoCodec(W, H) {
+  if (!('VideoEncoder' in window)) return null;
+  const big = W * H > 2228224, list = big ? ['avc1.640033', 'avc1.4d0033', 'avc1.420033'] : ['avc1.640028', 'avc1.4d0028', 'avc1.42e028', 'avc1.640033'];
+  for (const codec of list) { try { const r = await VideoEncoder.isConfigSupported({ codec, width: W, height: H, bitrate: br(W, H), framerate: FPS }); if (r.supported) return codec; } catch {} }
+  return null;
+}
+const br = (W, H) => Math.round(Math.min(20e6, Math.max(4e6, W * H * 3.2)));
+const ACH = 2, ABR = 160000, dual = (p, a, n) => { const d = new Float32Array(n * ACH); for (let c = 0; c < ACH; c++) d.set(p.subarray(a, a + n), c * n); return d; }; // Audio C: 2 identical channels (mono measures ~3 LU quieter on platforms), AAC 160 kbps
+async function aacOK() { if (!('AudioEncoder' in window)) return false; try { return (await AudioEncoder.isConfigSupported({ codec: 'mp4a.40.2', sampleRate: SR, numberOfChannels: ACH, bitrate: ABR })).supported; } catch { return false; } }
+// Offline export (WebCodecs): every frame is drawn and encoded, however long a frame takes, so nothing is dropped and
+// picture and sound stay in sync. 'mp4' = H.264 + AAC (best for X / Instagram / TikTok); 'webm' = VP9 or VP8 + Opus
+// (browsers without an H.264 or AAC encoder). The muxers write the duration and seek index.
+async function pickWebmCodec(W, H) {
+  if (!('VideoEncoder' in window) || !('AudioEncoder' in window) || !window.WebMMuxer) return null;
+  try { if (!(await AudioEncoder.isConfigSupported({ codec: 'opus', sampleRate: 48000, numberOfChannels: ACH, bitrate: 128000 })).supported) return null; } catch { return null; }
+  const vp9 = W * H > 2228224 ? 'vp09.00.50.08' : 'vp09.00.40.08';
+  for (const [codec, mux] of [[vp9, 'V_VP9'], ['vp8', 'V_VP8']]) { try { if ((await VideoEncoder.isConfigSupported({ codec, width: W, height: H, bitrate: br(W, H), framerate: FPS })).supported) return { codec, mux }; } catch {} }
+  return null;
+}
+async function pcmAt(pcm, rate) { if (rate === SR) return pcm; const b = new AudioBuffer({ length: pcm.length, sampleRate: SR, numberOfChannels: 1 }); b.copyToChannel(pcm, 0); return resample(b, rate); }
+const CANCELLED = 'cancelled';
+// Encoding + muxing run in a Worker when the browser has WebCodecs there (the page only draws the frames), so the editor stays smooth.
+// Frames are drawn one per task; the worker's reply is the next turn, which also keeps hidden tabs from stalling on timer throttling.
+let workerOK = null;
+async function exportWorkerOK() {
+  if (workerOK !== null) return workerOK;
+  workerOK = await new Promise((res) => { try { const w = new Worker('export-worker.js'); const t = setTimeout(() => { w.terminate(); res(false); }, 4000);
+    w.onmessage = ({ data }) => { clearTimeout(t); w.terminate(); res(!!data.ok); }; w.onerror = () => { clearTimeout(t); res(false); }; w.postMessage({ type: 'probe' }); } catch { res(false); } });
+  return workerOK;
+}
+async function exportOffline(kind, e, cv, W, H, codec, prog, snap, job) {
+  if (!(await exportWorkerOK())) return exportOfflineHere(kind, e, cv, W, H, codec, prog, snap, job);
+  const mp4 = kind === 'mp4', rate = mp4 ? SR : 48000, { feats } = snap, g = cv.getContext('2d'), pcm = await pcmAt(snap.pcm, rate);
+  const w = new Worker('export-worker.js'); let waiting = null, err = null, inflight = 0;
+  const reply = () => new Promise((r) => (waiting = r));
+  w.onmessage = ({ data }) => { if (data.err) err = new Error(data.err); if (data.type === 'ack') inflight--; const r = waiting; waiting = null; if (r) r(data); };
+  w.onerror = (x) => { err = new Error(x.message || 'the export worker stopped'); const r = waiting; waiting = null; if (r) r({}); };
+  try {
+    const vcfg = mp4 ? { codec, width: W, height: H, bitrate: br(W, H), framerate: FPS, avc: { format: 'avc' } } : { codec: codec.codec, width: W, height: H, bitrate: br(W, H), framerate: FPS, latencyMode: 'realtime' };
+    const acfg = { codec: mp4 ? 'mp4a.40.2' : 'opus', sampleRate: rate, numberOfChannels: ACH, bitrate: mp4 ? ABR : 128000 };
+    const pc = pcm.slice(); w.postMessage({ type: 'init', kind, W, H, fps: FPS, rate, ach: ACH, mux: codec.mux, vcfg, acfg, pcm: pc }, [pc.buffer]);
+    await reply(); if (err) throw err;
+    const N = feats.length, t0 = performance.now();
+    for (let i = 0; i < N; i++) {
+      if (err) throw err; if (job.cancelled) throw new Error(CANCELLED);
+      if (e.ready) await e.ready(i); e.drawFrame(feats[i], i / FPS); drawSubs(g, W, H, i / FPS, snap);
+      const vf = new VideoFrame(cv, { timestamp: Math.round((i * 1e6) / FPS), duration: Math.round(1e6 / FPS) });
+      inflight++; w.postMessage({ type: 'frame', frame: vf, i, key: i % (FPS * 2) === 0 }, [vf]);
+      while (inflight > 3 && !err) await reply(); // back-pressure: at most a few frames in flight
+      if (i % 3 === 0) { prog(i / N); if (job.checkpoint) await job.checkpoint(i + 1, N, performance.now() - t0); if (inflight <= 3) await new Promise((r) => { const c = new MessageChannel(); c.port1.onmessage = r; c.port2.postMessage(0); }); }
+    }
+    while (inflight > 0 && !err) await reply();
+    w.postMessage({ type: 'finish' }); let d; do d = await reply(); while (d && d.type !== 'done' && !err);
+    if (err) throw err;
+    return new Blob([d.buf], { type: mp4 ? 'video/mp4' : 'video/webm' });
+  } finally { w.terminate(); }
+}
+async function exportOfflineHere(kind, e, cv, W, H, codec, prog, snap, job) { // the same, all on the page (browsers without WebCodecs in workers)
+  const mp4 = kind === 'mp4', rate = mp4 ? SR : 48000, { feats } = snap, g = cv.getContext('2d'), pcm = await pcmAt(snap.pcm, rate);
+  const muxer = mp4
+    ? new Mp4Muxer.Muxer({ target: new Mp4Muxer.ArrayBufferTarget(), video: { codec: 'avc', width: W, height: H, frameRate: FPS }, audio: { codec: 'aac', numberOfChannels: ACH, sampleRate: SR }, fastStart: 'in-memory', firstTimestampBehavior: 'offset' })
+    : new WebMMuxer.Muxer({ target: new WebMMuxer.ArrayBufferTarget(), video: { codec: codec.mux, width: W, height: H, frameRate: FPS }, audio: { codec: 'A_OPUS', numberOfChannels: ACH, sampleRate: rate }, firstTimestampBehavior: 'offset' });
+  let err = null;
+  const ve = new VideoEncoder({ output: (c, m) => muxer.addVideoChunk(c, m), error: (x) => (err = x) });
+  const ae = new AudioEncoder({ output: (c, m) => muxer.addAudioChunk(c, m), error: (x) => (err = x) });
+  try {
+    ve.configure(mp4 ? { codec, width: W, height: H, bitrate: br(W, H), framerate: FPS, avc: { format: 'avc' } } : { codec: codec.codec, width: W, height: H, bitrate: br(W, H), framerate: FPS, latencyMode: 'realtime' });
+    ae.configure({ codec: mp4 ? 'mp4a.40.2' : 'opus', sampleRate: rate, numberOfChannels: ACH, bitrate: mp4 ? ABR : 128000 }); // Audio C: stereo
+    for (let off = 0; off < pcm.length; off += 4096) {
+      if (err) throw err;
+      const n = Math.min(4096, pcm.length - off), ad = new AudioData({ format: 'f32-planar', sampleRate: rate, numberOfFrames: n, numberOfChannels: ACH, timestamp: Math.round((off / rate) * 1e6), data: dual(pcm, off, n) }); // Audio C: dual mono
+      ae.encode(ad); ad.close();
+    }
+    const N = feats.length;
+    for (let i = 0; i < N; i++) {
+      if (err) throw err; if (job.cancelled) throw new Error(CANCELLED);
+      if (e.ready) await e.ready(i); e.drawFrame(feats[i], i / FPS); drawSubs(g, W, H, i / FPS, snap);
+      const vf = new VideoFrame(cv, { timestamp: Math.round((i * 1e6) / FPS), duration: Math.round(1e6 / FPS) }); ve.encode(vf, { keyFrame: i % (FPS * 2) === 0 }); vf.close();
+      while (ve.encodeQueueSize > 6) { if (err) throw err; await new Promise((r) => setTimeout(r, 4)); }
+      if (i % 6 === 0) { prog(i / N); await new Promise((r) => setTimeout(r)); }
+    }
+    await ve.flush(); await ae.flush(); if (err) throw err; muxer.finalize();
+    return new Blob([muxer.target.buffer], { type: mp4 ? 'video/mp4' : 'video/webm' });
+  } finally { for (const x of [ve, ae]) { try { if (x.state !== 'closed') x.close(); } catch {} } } // always free the (hardware) encoders
+}
+function recorderType() {
+  for (const t of ['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1.4D401F,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/webm;codecs=vp9,opus', 'video/webm']) if (window.MediaRecorder && MediaRecorder.isTypeSupported(t)) return t;
+  return '';
+}
+// Last resort: record the canvas in real time with MediaRecorder. Frames are drawn on the audio clock (no look-ahead: the
+// recorder hears the audio without output latency), drawing continues until the last frame, and the recorder gets time to
+// flush before it stops. WebM files get their duration written in afterwards.
+async function exportRealtime(e, cv, W, H, prog, snap, a, job) {
+  const { pcm, feats } = snap, type = recorderType(); if (!type) throw new Error('this browser cannot make videos, please try Chrome, Edge or Safari');
+  await a.resume();
+  const b = a.createBuffer(1, pcm.length, SR); b.getChannelData(0).set(pcm);
+  const s = a.createBufferSource(); s.buffer = b; const dest = a.createMediaStreamDestination(); s.connect(dest);
+  let vt = cv.captureStream(0).getVideoTracks()[0]; if (!vt.requestFrame) { vt.stop(); vt = cv.captureStream(FPS).getVideoTracks()[0]; } const stream = new MediaStream([vt, ...dest.stream.getAudioTracks()]); const push = () => { try { vt.requestFrame ? vt.requestFrame() : 0; } catch {} };
+  const mr = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: br(W, H), audioBitsPerSecond: 128000 }), chunks = [], g = cv.getContext('2d');
+  mr.ondataavailable = (x) => x.data.size && chunks.push(x.data);
+  const done = new Promise((r) => (mr.onstop = r));
+  e.drawFrame(feats[0], 0); drawSubs(g, W, H, 0, snap); push(); mr.start(500); const st = a.currentTime; s.start(st);
+  const dur = pcm.length / SR, N = feats.length; let drawn = 0, last = -1;
+  const abort = (msg) => { try { s.stop(); } catch {} mr.onstop = null; try { mr.stop(); } catch {} stream.getTracks().forEach((x) => x.stop()); return new Error(msg); };
+  await new Promise((res, rej) => { const tick = () => {
+    if (job.cancelled) return rej(abort(CANCELLED));
+    if (document.hidden) return rej(abort('the video stopped because Milani went to the background. Keep this tab open while it records'));
+    const t = a.currentTime - st, i = Math.max(0, Math.min(N - 1, Math.floor(t * FPS)));
+    if (i !== last) { e.drawFrame(feats[i], i / FPS); drawSubs(g, W, H, i / FPS, snap); push(); drawn++; last = i; } // one recorded frame per new picture
+    prog(Math.max(0, t / dur)); if (t >= dur + 0.1) return res(); requestAnimationFrame(tick); }; tick(); });
+  try { mr.requestData(); } catch {}
+  await new Promise((r) => setTimeout(r, 350)); // let the encoder flush the last frames before stopping
+  mr.stop(); await done; stream.getTracks().forEach((x) => x.stop());
+  let blob = new Blob(chunks, { type: type.split(';')[0] });
+  if (blob.type.includes('webm') && window.ysFixWebmDuration) blob = await ysFixWebmDuration(blob, Math.round(dur * 1000), { logger: false });
+  blob.fps = drawn / Math.max(0.5, dur);
+  return blob;
+}
+// Music video loudness: −14 LUFS integrated (social platforms), true peak ≤ −1.5 dBTP. The polish limiter (GroklyPolish.master, in
+// its worker) runs for music too, so peaky songs reach the target instead of being held back by their peaks. The export writes
+// dual-mono stereo, so loudness is measured as 2 channels. normaliseMusic is the gain-only fallback if the worker cannot run.
+function normaliseMusic(pcm) {
+  try { const D = window.GroklyDSP, I = D.integrated(pcm, SR, 2); if (!isFinite(I)) return pcm; let gdb = -14 - I; const tp = D.truePeakDb(pcm); if (isFinite(tp)) gdb = Math.min(gdb, -1.5 - tp);
+    const k = 10 ** (gdb / 20), out = new Float32Array(pcm.length); for (let i = 0; i < pcm.length; i++) out[i] = pcm[i] * k; return out; } catch { return pcm; }
+}
+async function masterMusic(pcm, my) {
+  if (window.GroklyPolish && GroklyPolish.master) { const out = await GroklyPolish.master(pcm, SR, my, { force: true, target: 'music' }); if (out !== pcm) return out; }
+  return window.GroklyDSP ? normaliseMusic(pcm) : pcm;
+}
+// ---------- export jobs (in the background: the editor stays usable) ----------
+// Each "Make my video" freezes a snapshot of the project and queues it; one export runs at a time. The page only draws the frames
+// (encoding + muxing in export-worker.js); a progress pill with % / time left / Cancel stays visible, and a toast brings the result.
+const BG_EXPORT = true;
+let lastURL = null, busy = false, job = null; const queue = [];
+const FREE_CAP_S = 30; // free tier: the first 30 s, always with the mark (closure value, not configurable)
+// Warn before leaving while a video is being made or waiting (a reload loses the job)
+addEventListener('beforeunload', (e) => { if (busy || queue.length) { e.preventDefault(); e.returnValue = ''; } });
+// Slow artworks: measured make-time per frame (ms) per artwork and quality, so a queued job can be asked about at click time
+const artRate = {}; const artKey = (snap, q) => (snap.pic && snap.pic.id) + '@' + q;
+function askAtClick(text) { // the confirm box at click time; resolves true (make it) or false (cancel)
+  $('confirmText').textContent = text; $('confirmBox').hidden = false; $('confirmGo').focus({ preventScroll: true });
+  return new Promise((r) => { const end = (v) => { $('confirmBox').hidden = true; r(v); }; $('confirmGo').onclick = () => end(true); $('confirmStop').onclick = () => end(false); });
+}
+const lockEdit = (on) => { $('cancelMake').hidden = !on; $('pill').hidden = !on; }; // the editor is not locked any more (frozen snapshot per job)
+$('cancelMake').onclick = $('pillCancel').onclick = () => { if (job) { job.cancelled = true; if (job.onCancel) job.onCancel(); $('cancelMake').disabled = $('pillCancel').disabled = true; $('makeNote').textContent = 'Stopping…'; $('pillText').textContent = 'Stopping…'; } };
+const pillText = (t) => { $('pillText').textContent = t + (queue.length ? ` · ${queue.length} waiting` : ''); };
+$('make').onclick = () => {
+  if (S.q > 1440 && !(window.GroklyPass && GroklyPass.allows4k())) { S.q = 1440; setSeg('quality', 'q', 1440); saveState(); } // Grokly Pass: 4K only for Touch of the Moment minters
+  const J = { snap: { ...S, subs: S.subs.map((x) => ({ ...x })), layout: JSON.parse(JSON.stringify(S.layout)), pic: { ...S.pic }, artSeeds: { ...S.artSeeds } }, q: S.q, kind: kindOf(S.style), art: picIsArt() && !mvOn() };
+  J.o = opts(J.q / 1080); J.o1080 = opts(1); J.o.layout = J.o1080.layout = J.snap.layout[layoutKey(J.snap)] || {}; // the layout as it was at the click
+  J.rtCtx = new (window.AudioContext || window.webkitAudioContext)(); J.rtCtx.resume(); // must start inside the tap for Safari
+  // Slow artworks: ask once, now, for a job that will wait in the queue; a queued job never stops to ask. Clips under 10 s never ask.
+  const clipS = Math.min(S.pcm ? S.pcm.length / SR : 0, window.GroklyPass ? GroklyPass.maxSeconds() : FREE_CAP_S);
+  J.noAsk = !J.art || clipS < 10 || busy;
+  if (J.art && clipS >= 10 && busy && $('confirmBox').hidden) {
+    const r = artRate[artKey(J.snap, J.q)], est = r ? (r * clipS * FPS) / 1000 : 0;
+    if (!r || est > clipS * 2 + 20) {
+      const how = r ? `about ${est < 90 ? Math.round(est) + ' seconds' : Math.round(est / 60) + ' minutes'}` : 'several minutes';
+      askAtClick(`This artwork can take ${how} to make on this device for a ${fmtT(clipS)} video${J.q > 720 ? ' (720p is about twice as fast)' : ''}. It will start after the video being made now.`)
+        .then((go) => { if (!go) { try { J.rtCtx.close(); } catch {} return; } queue.push(J); if (busy) { pillText($('pillText').textContent.replace(/ · \d+ waiting$/, '')); $('makeNote').textContent = `Added to the queue (${queue.length} waiting). Your current video keeps going.`; } else runQueue(); });
+      return;
+    }
+  }
+  queue.push(J);
+  if (busy) { pillText($('pillText').textContent.replace(/ · \d+ waiting$/, '')); $('makeNote').textContent = `Added to the queue (${queue.length} waiting). Your current video keeps going.`; return; }
+  runQueue();
+};
+async function runQueue() { while (queue.length) await runJob(queue.shift()); }
+// keep the device awake and the tab alive while a video is made; tell the user that hidden tabs are slower
+let wake = null;
+async function holdAwake(on) { try { if (on && navigator.wakeLock && !wake && document.visibilityState === 'visible') wake = await navigator.wakeLock.request('screen'); if (!on && wake) { await wake.release(); wake = null; } } catch {} }
+document.addEventListener('visibilitychange', () => { if (!busy) return; if (document.hidden) $('pillWarn').hidden = false; else { $('pillWarn').hidden = true; holdAwake(true); } });
+function toast(blob, fname) {
+  const t = $('toast'); $('toastSave').href = lastURL; $('toastSave').download = fname; t.hidden = false;
+  const file = new File([blob], fname, { type: blob.type }), canShare = navigator.canShare && navigator.canShare({ files: [file] });
+  $('toastShare').hidden = !canShare; $('toastShare').onclick = () => navigator.share({ files: [file] }).catch(() => {});
+  try { if (document.hidden && window.Notification && Notification.permission === 'granted') new Notification('Your Milani video is ready', { body: fname, silent: true }); } catch {}
+}
+$('toastClose').onclick = () => ($('toast').hidden = true);
+async function runJob(J) {
+  busy = true; const my = (job = { cancelled: false }); lockEdit(true); $('cancelMake').disabled = $('pillCancel').disabled = false; $('pillWarn').hidden = !document.hidden; holdAwake(true);
+  const hadResult = !$('result').hidden; $('bar').hidden = false; $('barFill').style.width = '0%'; $('makeNote').textContent = 'Getting ready…'; pillText('Getting ready…');
+  const snap = J.snap, rtCtx = J.rtCtx;
+  const cancelled = new Promise((_, rej) => (my.onCancel = () => rej(new Error(CANCELLED)))); cancelled.catch(() => {}); // Cancel also stops a slow artwork start or music render
+  // Grokly Pass: refresh the collector-credit balance right before export (bounded; failure/timeout ⇒ free version, never blocks)
+  if (window.GroklyPass && GroklyPass.state.account) { $('makeNote').textContent = 'Checking your Milani Pass…'; await GroklyPass.checkForExport(); }
+  if (J.o.watermark !== undefined) J.o.watermark = J.o1080.watermark = wmOn() ? wmText() : ''; // the watermark as decided right after the pass check (unchanged rule)
+  let q = J.q, cv = document.createElement('canvas'), cvCtx = cv.getContext('2d', { willReadFrequently: true }) /* frames are read back for encoding */, te = eng(cv, J.kind), o = J.o, W = o.W, H = o.H;
+  const xs = GroklyArt.makeSource(), e = { drawFrame(f, t) { if (picIsArtSnap) xs.step(f, t); if (snap.mvMix) snap.mvMix.frame(Math.round(t * FPS), f, t); te.speaker = speakerAt(t, snap); te.drawFrame(f, t); }, ready: (i) => snap.mvMix && snap.mvMix.ready(i) }, picIsArtSnap = J.art;
+  if (snap.mode === 'music' && snap.mvPlan) snap.mvMix = GroklyMV.makeMixer(GroklyArt.makeSource); // Music video: its own two artworks, cut frame-exactly
+  try {
+    await loadFonts(); if (my.cancelled) throw new Error(CANCELLED);
+    // Background music: voice + music, rendered offline (same seed ⇒ same music), for every export way; the art follows the mix
+    if (window.GroklyPolish && GroklyPolish.busy) { $('makeNote').textContent = 'Polishing your voice…'; await Promise.race([GroklyPolish.ready(), cancelled]); snap.pcm = S.pcm; } // Audio C: wait for a running polish (same features: they come from the raw sound)
+    if (window.GroklyMusic && GroklyMusic.on) { $('makeNote').textContent = 'Adding the music…'; snap.pcm = await Promise.race([GroklyMusic.mix(snap.pcm, SR, my), cancelled]); /* team A: Cancel stops the mix */ snap.feats = E.analyze(snap.pcm, FPS); if (my.cancelled) throw new Error(CANCELLED); }
+    if (window.GroklyBeat && GroklyMusic.on) snap.feats = GroklyBeat.apply(snap.feats, FPS); // Audio C: exact beats from the music's note times
+    if (snap.mode !== 'music' && window.GroklyPolish && GroklyPolish.on && S.pcm !== S.full) { $('makeNote').textContent = 'Setting the loudness…'; snap.pcm = await GroklyPolish.master(snap.pcm, SR, my); if (my.cancelled) throw new Error(CANCELLED); } // Audio C (worker, cancellable): loudness target + true-peak limit on the final sound
+    { const c = window.GroklyPass ? await GroklyPass.capExport(snap.pcm, snap.feats, SR, FPS, snap.wm) : { pcm: snap.pcm.slice(0, 30 * SR), feats: snap.feats.slice(0, 30 * FPS), capped: snap.pcm.length > 30 * SR ? 30 : 0, wm: true }; // Grokly Pass: credits ⇒ full length (≤ 5 min), mark optional; free ⇒ first 30 s + mark
+      if (!(c.credits > 0)) { // free version, enforced here too from fixed values (the console can't change these)
+        c.wm = true; if (c.pcm.length > FREE_CAP_S * SR) { c.pcm = c.pcm.slice(0, FREE_CAP_S * SR); c.feats = c.feats ? c.feats.slice(0, FREE_CAP_S * FPS) : c.feats; c.capped = FREE_CAP_S; } }
+      snap.pcm = c.pcm; snap.feats = c.feats; snap.capped = c.capped; snap.passNote = c.capped || c.reason ? (window.GroklyPass ? GroklyPass.exportNote(c.capped, c.reason) : 'Free videos use the first 30 seconds.') : ''; J.o.watermark = J.o1080.watermark = c.wm ? wmText() : ''; if (my.cancelled) throw new Error(CANCELLED); }
+    if (snap.mode === 'music') { $('makeNote').textContent = 'Setting the loudness…'; snap.pcm = await masterMusic(snap.pcm, my); if (my.cancelled) throw new Error(CANCELLED); } // Music video: −14 LUFS + true-peak limiter, measured on the part that is exported
+    if (snap.capped) snap.pcm = fadeOutEnd(snap.pcm, 1.25); // team A: the free cap ends with a 1.25 s fade-out, not a hard stop
+    const h264 = await pickVideoCodec(W, H), mp4 = h264 && (await aacOK()), webm = mp4 ? null : await pickWebmCodec(W, H);
+    // only the browser's own encoders are used (no bundled codecs): MP4 with its H.264 + AAC, else royalty-free WebM (VP9/VP8 + Opus), else real-time recording
+    const ways = [...(mp4 ? ['mp4'] : []), ...(webm || mp4 ? ['webm'] : []), 'rt'];
+    const slowWay = (w) => w === 'rt'; // real-time recording makes up to 1080p
+    if (slowWay(ways[0]) && q > 1080) { q = 1080; o = J.o1080; W = o.W; H = o.H; }
+    $('makeNote').textContent = picIsArtSnap ? 'Starting the artwork…' : 'Getting ready…'; pillText($('makeNote').textContent);
+    await Promise.race([(async () => { o.picture = await preparePicture(xs, o, snap); await te.setup(o); })(), cancelled]);
+    let t0w = 0, base = '';
+    const prog = (p) => { const pc = Math.round(Math.min(1, p) * 100); $('barFill').style.width = pc + '%'; const el = (performance.now() - t0w) / 1000; let left = '';
+      if (p > 0.04 && el > 4 && !my.cancelled) { const s2 = (el * (1 - p)) / p; left = ` About ${s2 < 60 ? Math.max(5, Math.round(s2 / 5) * 5) + ' seconds' : Math.round(s2 / 60) + ' minute' + (Math.round(s2 / 60) > 1 ? 's' : '')} left.`; $('makeNote').textContent = base + left; }
+      if (!my.cancelled) pillText(`Making your video · ${pc}%` + left.replace(/^ About (.*) left\.$/, ' · about $1 left')); };
+    // slow artworks: after ~1 s of video, if the whole clip would take more than twice its length, ask first (720p is faster)
+    let asked = false;
+    my.checkpoint = async (i, N, ms) => {
+      if (asked || !(picIsArtSnap || snap.mode === 'music') || i < 30) return; asked = true; const est = (ms / i) * N / 1000, dur = N / FPS;
+      if (snap.mode === 'music') { const m = est < 90 ? `${Math.max(5, Math.round(est / 5) * 5)} seconds` : `${Math.round(est / 60)} minutes`; base += ` This ${fmtT(dur)} music video takes about ${m} on this device${q > 720 ? ' (720p is about twice as fast)' : ''}.`; $('makeNote').textContent = base; return; } // Music video: an estimate up front, without stopping
+      artRate[artKey(snap, q)] = ms / i; // remembered for later clicks (see the Make button)
+      if (J.noAsk || dur < 10 || est <= dur * 2 + 20) return; // queued jobs and short clips never stop to ask
+      const mins = est < 90 ? `${Math.round(est)} seconds` : `${Math.round(est / 60)} minutes`;
+      $('confirmText').textContent = `${snap.mode === 'music' ? 'This music video' : 'This artwork'} takes about ${mins} to make on this device for a ${fmtT(dur)} video${q > 720 ? ' (720p is about twice as fast)' : ''}.`;
+      $('confirmBox').hidden = false; $('confirmGo').focus({ preventScroll: true });
+      const t0p = performance.now();
+      try { await Promise.race([new Promise((r) => ($('confirmGo').onclick = r)), new Promise((_, rej) => ($('confirmStop').onclick = () => { $('cancelMake').click(); rej(new Error(CANCELLED)); })), cancelled]); }
+      finally { $('confirmBox').hidden = true; t0w += performance.now() - t0p; }
+    };
+    let blob = null, way = '', firstErr = null;
+    for (way of ways) {
+      if (my.cancelled) throw new Error(CANCELLED);
+      try {
+        if (slowWay(way) && q > 1080) { q = 1080; o = J.o1080; W = o.W; H = o.H; o.picture = await preparePicture(xs, o, snap); await te.setup(o); }
+        base = way === 'rt' ? `Recording your ${q}p video in real time. Keep this tab open.` + (J.q > 1080 ? ' (This browser can only make up to 1080p.)' : '') : `Making your ${q}p video…`;
+        t0w = performance.now(); prog(0); $('makeNote').textContent = base;
+        if (way === 'mp4') blob = await exportOffline('mp4', e, cv, W, H, h264, prog, snap, my);
+        else if (way === 'webm') { const c = webm || (await pickWebmCodec(W, H)); if (!c) throw new Error('no WebM encoder'); blob = await exportOffline('webm', e, cv, W, H, c, prog, snap, my); }
+        else blob = await exportRealtime(e, cv, W, H, prog, snap, rtCtx, my);
+        if (!blob || !blob.size) throw new Error('the video came out empty');
+        break;
+      } catch (x) { if (x && x.message === CANCELLED) throw x; console.warn('Grokly export: ' + way + ' failed, trying the next way', x); firstErr = firstErr || x; blob = null; }
+    }
+    if (!blob) throw firstErr || new Error('the video came out empty');
+    prog(1);
+    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm', fname = `milani-${snap.style.replace('card:', '')}${picIsArtSnap ? '-' + snap.pic.id : ''}-${new Date().toISOString().slice(0, 10)}-${q}p.${ext}`;
+    if (lastURL) { $('out').removeAttribute('src'); $('out').load(); URL.revokeObjectURL(lastURL); } // the previous video is replaced only now
+    lastURL = URL.createObjectURL(blob);
+    $('out').src = lastURL; $('save').href = lastURL; $('save').download = fname;
+    const file = new File([blob], fname, { type: blob.type }), canShare = navigator.canShare && navigator.canShare({ files: [file] });
+    $('share').hidden = !canShare; $('share').onclick = () => navigator.share({ files: [file] }).catch(() => {});
+    $('postX').href = 'https://x.com/intent/post?text=' + encodeURIComponent('My sound, as a video 🎧 Made with Milani');
+    const facts = `${(blob.size / 1048576).toFixed(1)} MB · ${W}×${H} · ${fmtT(snap.pcm.length / SR)}`;
+    $('resNote').textContent = ext === 'mp4' ? `${facts} · ready for X, Instagram and TikTok. On X, attach the saved video to your post.`
+      : `${facts} · This is a WebM video: it works on YouTube and most computers, but X, Instagram and TikTok need MP4. This browser couldn’t make MP4 here; another browser may be able to.`;
+    if (snap.pcm.length / SR > 140) $('resNote').textContent += ' X allows up to 2:20 without Premium.';
+    if (snap.passNote) $('resNote').textContent += ' ' + snap.passNote; // Grokly Pass: free-version / credits note
+    if (blob.fps && blob.fps < 15) $('resNote').textContent += ` This device could draw only about ${Math.round(blob.fps)} frames a second, so the motion may look jumpy. 720p or a simpler design will look smoother.`;
+    $('result').hidden = false; $('makeNote').textContent = 'Done. Your video is below. Try another template any time.'; uiSound('done'); toast(blob, fname);
+  } catch (x) {
+    const m = String((x && x.message) || x || '').replace(/[.\s]+$/, '');
+    if (m !== CANCELLED) uiSound('error');
+    $('makeNote').textContent = m === CANCELLED ? 'Stopped. No video was made.' + (hadResult ? ' Your previous video is still below.' : '') : `Something went wrong while making the video (${m}). Please try again, or choose 720p in Quality.`;
+    if (hadResult && lastURL) $('result').hidden = false;
+  }
+  finally { busy = false; job = null; lockEdit(false); $('bar').hidden = true; holdAwake(false); try { rtCtx.close && rtCtx.close().catch(() => {}); } catch {} xs.destroy(); if (snap.mvMix) snap.mvMix.destroy(); }
+}
+
+// ---------- start ----------
+(async () => {
+  { const L = { fa: 'persian', ar: 'arabic', tr: 'turkish', ur: 'urdu', es: 'spanish', fr: 'french', de: 'german', it: 'italian', pt: 'portuguese', ru: 'russian', hi: 'hindi', zh: 'chinese', ja: 'japanese', ko: 'korean' };
+    const saved = store.get('grokly.lang'), nav = (navigator.language || 'en').slice(0, 2).toLowerCase(); $('lang').value = saved || L[nav] || 'english'; $('lang').onchange = () => store.set('grokly.lang', $('lang').value); }
+  S.avatar = defaultAvatar(); { const a = store.get('grokly.avatar'); if (a && /^data:image\/(jpeg|png|webp);base64,/.test(a)) { S.avatar = a; S.userPhoto = true; } } $('avatarImg').src = S.avatar;
+  { const okImg = (a) => a && /^data:image\/(jpeg|png|webp);base64,/.test(a) ? a : null; S.guest = okImg(store.get('grokly.guest')); S.bgImage = okImg(store.get('grokly.bgimg')); showGuest(); showBg(); }
+  { const m = store.get('grokly.model'); if (m && [...$('model').options].some((o) => o.value === m)) $('model').value = m; $('model').onchange = () => store.set('grokly.model', $('model').value); }
+  for (const id of ['title', 'name', 'guestName']) { const v = store.get('grokly.' + id); if (v != null) $(id).value = v.slice(0, +$(id).maxLength || 48); }
+  // restore the other settings, checking each value against what the controls allow
+  try { const v = JSON.parse(store.get('grokly.settings') || '{}'), col = (c) => (c === null || /^#[0-9a-f]{6}$/i.test(c || '') ? c : undefined), num = (x, a, b) => (typeof x === 'number' && x >= a && x <= b ? x : undefined), obj = (x) => (x && typeof x === 'object' && !Array.isArray(x) ? x : undefined);
+    const ok = { fmt: FMT[v.fmt] ? v.fmt : undefined, bg: col(v.bg), ink: col(v.ink), acc: col(v.acc), font: FONTS.some(([f]) => f === v.font) ? v.font : undefined, subFont: FONTS.some(([f]) => f === v.subFont) ? v.subFont : undefined,
+      textScale: num(v.textScale, 0.6, 1.6), subScale: num(v.subScale, 0.6, 1.8), subPos: ['auto', 'top', 'middle', 'bottom'].includes(v.subPos) ? v.subPos : undefined, subLook: ['box', 'outline', 'plain'].includes(v.subLook) ? v.subLook : undefined,
+      subColor: v.subColor === 'auto' || /^#[0-9a-f]{6}$/i.test(v.subColor || '') ? v.subColor : undefined, q: [720, 1080, 1440, 2160].includes(v.q) ? v.q : undefined, artSeeds: obj(v.artSeeds), artHist: obj(v.artHist), artVers: obj(v.artVers), lastArt: typeof v.lastArt === 'string' ? v.lastArt : undefined, colourSeed: Number.isInteger(v.colourSeed) ? v.colourSeed : undefined, mode: v.mode === 'music' ? 'music' : undefined, wmStyle: v.wmStyle === 'sig' || v.wmStyle === 'text' ? v.wmStyle : undefined,
+      mv: obj(v.mv) ? { arts: Array.isArray(v.mv.arts) ? v.mv.arts.filter((x) => GroklyArt.ART.some(([id]) => id === x)).slice(0, 6) : [], style: ['calm', 'pulse', 'fast'].includes(v.mv.style) ? v.mv.style : 'calm', trans: v.mv.trans === 'xfade' ? 'xfade' : 'cut', seed: Number.isInteger(v.mv.seed) ? v.mv.seed : 1, hist: Array.isArray(v.mv.hist) ? v.mv.hist.filter(Number.isInteger).slice(-20) : [] } : undefined,
+      layout: obj(v.layout) && Object.fromEntries(Object.entries(v.layout).filter(([, m]) => obj(m)).map(([k, m]) => [k, Object.fromEntries(Object.entries(m).filter(([, o]) => o && typeof o === 'object' && Math.abs(o.x || 0) <= 1 && Math.abs(o.y || 0) <= 1 && (o.s == null || (o.s >= 0.2 && o.s <= 4)) && (o.hide == null || typeof o.hide === 'boolean')))])) };
+    for (const k in ok) if (ok[k] !== undefined) S[k] = ok[k];
+  } catch {}
+  setSeg('fmt', 'f', S.fmt); setSeg('quality', 'q', S.q); setSeg('subPos', 'v', S.subPos); setSeg('subLook', 'v', S.subLook);
+  $('textSize').value = Math.round(S.textScale * 100); $('textSizeVal').textContent = $('textSize').value + '%'; $('subSize').value = Math.round(S.subScale * 100); $('subSizeVal').textContent = $('subSize').value + '%';
+  $('soundName').dir = 'auto';
+  const all = [...CARDS.map(([n]) => 'card:' + n), ...WAVES], arts = GroklyArt.ART.map(([id]) => id);
+  let st = store.get('grokly.style'); if (st && st.startsWith('art:')) { store.set('grokly.pic', st.slice(4)); st = 'full'; }
+  if (st && all.includes(st)) S.style = st;
+  const sp = store.get('grokly.pic'); if (sp && arts.includes(sp)) S.pic = { kind: 'art', id: sp };
+  const qa = new URLSearchParams(location.search).get('art'); if (qa && arts.includes(qa)) S.pic = { kind: 'art', id: qa };
+  const q = new URLSearchParams(location.search).get('style'); if (q) { const m = all.includes('card:' + q) ? 'card:' + q : all.includes(q) ? q : null; if (m) S.style = m; }
+  const tab = store.get('grokly.tab'); if (tab && $('p-' + tab)) document.querySelector(`.tools [data-p="${tab}"]`).click();
+  fontButtons('titleFont', 'font'); fontButtons('subFont', 'subFont'); refreshSwatches(); buildPresets(); markPreset();
+  const sc = $('subColor'); ['auto', '#ffffff', '#ffe066', '#9be7ff', '#ffb3a7', '#15252c'].forEach((c) => { const b = document.createElement('button'); b.style.background = c === 'auto' ? 'conic-gradient(#e2614f,#0099cc,#87a29a,#e2614f)' : c; b.setAttribute('aria-label', c === 'auto' ? 'Automatic (follows the Colour tool)' : c); b.setAttribute('aria-pressed', String(c === S.subColor)); b.onclick = () => { S.subColor = c; [...sc.children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); drawPreview(curFrame()); saveState(); }; sc.append(b); });
+  await document.fonts.ready;
+  S.full = await sampleBeat(); S.pcm = S.full; S.feats = E.analyze(S.pcm, FPS); S.subs = SAMPLE_SUBS.map((s) => ({ ...s, sample: true })); renderLines(); drawWave();
+  setSeg('mvStyle', 'v', S.mv.style); setSeg('mvTrans', 'v', S.mv.trans); buildMvArts(); if (S.mode === 'music') setMode('music', true); // Music video mode comes back after a reload
+  buildArtChips(); await setupPreview(); drawPreview(40); buildChips(); requestAnimationFrame(idleTick);
+  // before any export: say so if this browser can't make MP4 (X, Instagram and TikTok need it)
+  (async () => { try { const ok = (await pickVideoCodec(1080, 1350)) && (await aacOK()); $('mp4Note').hidden = !!ok; } catch { $('mp4Note').hidden = false; } })();
+  if (coarse) $('layoutTip').textContent = 'Tip: tap an item on the preview to select it, then drag, pinch, or use its × and corner handle. Swipe anywhere else to scroll.';
+  addEventListener('resize', () => S.pcm && drawWave());
+  // Audio C: bridge for audio/*.js (voice polish, trim silences, who speaks); re-cutting applies the new sound everywhere
+  window.GroklyAudioHost = { S, SR, FPS, MAXS, stop, cut, renderLines, drawPreview, curFrame, setPcm(p) { S.pcm = p; drawWave(); drawPreview(curFrame()); }, get subsOut() { return subsOut; }, set subsOut(v) { subsOut = v; }, get trimWas() { return trimWas; }, set trimWas(v) { trimWas = v; } };
+  if (window.GroklyPolish) { GroklyPolish.mount($('audioC'), GroklyAudioHost); GroklySilence.mount($('audioC'), GroklyAudioHost); GroklySpeakers.mount($('spkBox'), GroklyAudioHost); } // Audio C
+  window.__grokly = { S, drawPreview, setupPreview, items: hitItems, ready: true, get busy() { return busy || queue.length > 0; } }; // busy: an export is running or waiting (the Make button stays enabled)
+})();
+})();
+</script>
+</body>
+</html>

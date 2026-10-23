@@ -1,0 +1,134 @@
+Milani — third-party notices
+============================
+
+Milani (by Reza Milani) ships the third-party files below. Each entry gives the shipped file(s), the
+component and exact version, its licence, and where the full licence text is (in licenses/, next to
+this file). Everything not listed here is Milani's own code and artwork.
+
+Versions were identified by comparing the shipped files byte for byte with the packages on the npm
+registry ("identical" below), unless noted otherwise.
+
+
+1. JavaScript libraries
+-----------------------
+
+mp4-muxer.js
+  mp4-muxer 5.1.3 (npm build/mp4-muxer.js, identical). Copyright (c) 2023 Vanilagy.
+  Licence: MIT — licenses/mp4-muxer.MIT.txt
+
+vendor/webm-muxer.js
+  webm-muxer 5.1.4 (npm build/webm-muxer.js, identical; 5.1.3 has the same file). Copyright (c) 2022 Vanilagy.
+  Licence: MIT — licenses/webm-muxer.MIT.txt (also vendor/webm-muxer.LICENSE)
+
+vendor/fix-webm-duration.js
+  fix-webm-duration 1.0.6 (identical). Copyright (c) 2018 Yury Sitnikov.
+  Licence: MIT — licenses/fix-webm-duration.MIT.txt (also vendor/fix-webm-duration.LICENSE)
+
+vendor/transformers.min.js
+  Transformers.js — @huggingface/transformers 3.8.1 (npm dist/transformers.min.js, identical).
+  Copyright Hugging Face. Licence: Apache License 2.0 — licenses/transformers.js.Apache-2.0.txt
+  NOTICE: the @huggingface/transformers 3.8.1 package contains no NOTICE file, so there is no NOTICE
+  text to reproduce (Apache-2.0 section 4(d) applies only when the work includes one). Not modified.
+  This bundle also contains:
+    - @huggingface/jinja (^0.5.3, bundled by Hugging Face). Copyright (c) 2023 Hugging Face.
+      Licence: MIT — licenses/huggingface-jinja.MIT.txt
+    - onnxruntime-common and the JavaScript part of onnxruntime-web 1.22.0-dev.20250409-89f8206ba4.
+      Copyright (c) Microsoft Corporation. Licence: MIT — licenses/onnxruntime-web.MIT.txt
+
+vendor/ort-wasm-simd-threaded.jsep.mjs
+vendor/ort-wasm-simd-threaded.jsep.wasm
+  ONNX Runtime Web — onnxruntime-web 1.22.0-dev.20250409-89f8206ba4 (npm dist/, both identical).
+  Copyright (c) Microsoft Corporation. Licence: MIT — licenses/onnxruntime-web.MIT.txt
+  (The npm package has no LICENSE file; the text above is the MIT licence named in its package.json and
+  file headers, with Microsoft's copyright line. The compiled wasm also contains third-party code that
+  ONNX Runtime lists in its ThirdPartyNotices.txt in the microsoft/onnxruntime repository.)
+
+p5.js 1.9.4, unmodified (npm lib/p5.min.js, identical; renamed only):
+  art/_shared/p5-06b486e8.min.js, art/a-field-in-the-wind/__p5.min.js, art/dusk-hills/__p5.min.js,
+  art/hart/p5.min.js, art/imago/__p5.min.js, art/old-tree/__p5.min.js, art/poppy-map/__p5.min.js
+  Copyright the Processing Foundation and p5.js contributors. Licence: GNU LGPL 2.1 — licenses/LGPL-2.1.txt
+
+p5.js 1.9.4, MODIFIED: art/_shared/p5-90579d4f.min.js (used by Spring Behind the River V)
+  One call changed to getContext("2d", {willReadFrequently: true}).
+  Licence: GNU LGPL 2.1 — licenses/LGPL-2.1.txt
+  The change is described in licenses/p5-modifications/spring-behind-the-river-v-p5.min.js.diff.txt
+
+p5.js 1.6.0, unmodified: art/_shared/p5-51188c35.min.js (npm lib/p5.min.js, identical) and
+  art/dusk-hills/p5.js (npm lib/p5.js, identical). Licence: GNU LGPL 2.1 — licenses/LGPL-2.1.txt
+
+p5.js 1.6.0, MODIFIED: art/night-river/sakura/p5.min.js
+  One change in Renderer2D: offscreen graphics get getContext("2d", {willReadFrequently: true}); a comment
+  at the top of the file says so. Licence: GNU LGPL 2.1 — licenses/LGPL-2.1.txt
+  The change is described in licenses/p5-modifications/night-river-sakura-p5.min.js.diff.txt
+  (licenses/p5-modifications/night-river-sakura-p5.js.diff is the same change in the unminified source).
+
+p5.sound 1.0.1 (2021-05-25), as distributed in the p5 1.6.0 and 1.9.4 npm packages
+  (lib/addons/p5.sound.min.js, identical): art/_engine/p5.sound.min.js, art/dusk-hills/p5.sound.min.js
+  Licence: GNU LGPL 2.1 — licenses/LGPL-2.1.txt
+
+(Files in art/_shared/ are named by the first 8 hex digits of their MD5, so the same file is shipped once.)
+
+art/night-river/sakura/toxiclibs.min.js
+  toxiclibs.js — toxiclibsjs 0.3.3, unmodified, bundled with esbuild 0.24.2
+  (esbuild index.js --bundle --minify --format=iife --global-name=toxi reproduces the file byte for byte).
+  Copyright Kyle Phillips; a port of Karsten Schmidt's toxiclibs. Licence: GNU LGPL 2.1 —
+  licenses/LGPL-2.1.txt
+
+Source for the LGPL libraries: the complete, corresponding source code is in the npm packages
+p5@1.9.4, p5@1.6.0 and toxiclibsjs@0.3.3 (https://www.npmjs.com/), and at
+https://github.com/processing/p5.js, https://github.com/processing/p5.js-sound and
+https://github.com/hapticdata/toxiclibsjs. The libraries are loaded as separate files, so you may
+replace any of them with your own (compatible) version.
+
+engine.js (spectrum smoothing; generated from templates/*.html)
+  Ported from cava (karlstav/cava, cavacore.c and cava.c). Copyright (c) 2015 Karl Stavestrand.
+  Licence: MIT — licenses/cava.MIT.txt (the notice is also kept in the source)
+
+sounds/*.mp3 (7 UI sounds)
+  Rendered at build time from the earshot sound bank (code not shipped). Copyright (c) 2026 Leon Lin.
+  Licence: MIT — licenses/earshot.MIT.txt
+
+
+2. Fonts (SIL Open Font License 1.1)
+------------------------------------
+
+All fonts are under the SIL Open Font License, Version 1.1. Full texts with each family's copyright
+line are in licenses/fonts/. The woff2 files are the @fontsource subsets (latin, latin-ext, vietnamese).
+
+vendor/fonts/anton-*.woff2                 Anton                licenses/fonts/anton.OFL.txt
+vendor/fonts/bebas-neue-*.woff2            Bebas Neue           licenses/fonts/bebas-neue.OFL.txt
+vendor/fonts/bricolage-grotesque-*.woff2   Bricolage Grotesque  licenses/fonts/bricolage-grotesque.OFL.txt
+vendor/fonts/caveat-*.woff2                Caveat               licenses/fonts/caveat.OFL.txt
+vendor/fonts/dm-sans-*.woff2               DM Sans              licenses/fonts/dm-sans.OFL.txt
+vendor/fonts/figtree-*.woff2               Figtree              licenses/fonts/figtree.OFL.txt
+vendor/fonts/inter-*.woff2                 Inter                licenses/fonts/inter.OFL.txt
+vendor/fonts/jetbrains-mono-*.woff2        JetBrains Mono       licenses/fonts/jetbrains-mono.OFL.txt
+vendor/fonts/lora-*.woff2                  Lora                 licenses/fonts/lora.OFL.txt
+vendor/fonts/montserrat-*.woff2            Montserrat           licenses/fonts/montserrat.OFL.txt
+vendor/fonts/playfair-display-*.woff2      Playfair Display     licenses/fonts/playfair-display.OFL.txt
+vendor/fonts/poppins-*.woff2               Poppins              licenses/fonts/poppins.OFL.txt
+vendor/fonts/space-grotesk-*.woff2         Space Grotesk        licenses/fonts/space-grotesk.OFL.txt
+vendor/fonts/space-mono-*.woff2            Space Mono           licenses/fonts/space-mono.OFL.txt
+art/hart/archivo-400-latin.woff2           Archivo              licenses/fonts/archivo.OFL.txt
+art/garden-lights/sketch.abx.js (embedded) EB Garamond          licenses/fonts/eb-garamond.OFL.txt
+
+(The same 14 vendor texts are also in vendor/fonts/<family>.OFL.txt.)
+
+
+3. Platform helper scripts (no licence stated)
+----------------------------------------------
+
+art/poppy-map/lib/hl-gen.js, art/old-tree/lib/hl-gen.js, art/fern/hl-token.js
+  "Highlight Generative Art Script V0" 0.1.2 (adapted), the helper that the highlight.xyz platform gives
+  artists for seeded randomness. No licence is stated in the file.
+
+art/spring-behind-the-river-v/random.js
+  The Art Blocks "Random" class (sfc32 PRNG), the helper that Art Blocks gives artists. No licence is
+  stated in the file.
+
+
+4. Speech models
+----------------
+
+No model files are shipped yet. See models/README.md. When the Whisper models are hosted in models/,
+add their licence here.

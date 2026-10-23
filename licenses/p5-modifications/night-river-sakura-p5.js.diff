@@ -1,0 +1,11 @@
+--- p5@1.6.0/lib/p5.js (npm original)
++++ app/art/night-river/sakura/p5.js (shipped)
+@@ -63214,7 +63214,7 @@
+         var styleEmpty = 'rgba(0,0,0,0)'; // const alphaThreshold = 0.00125; // minimum visible
+         _main.default.Renderer2D = function (elt, pInst, isMainCanvas) {
+           _main.default.Renderer.call(this, elt, pInst, isMainCanvas);
+-          this.drawingContext = this.canvas.getContext('2d');
++          this.drawingContext = this.canvas.getContext('2d', { willReadFrequently: !isMainCanvas }); // Grokly: sakura reads its offscreen graphics back every frame (copy → loadPixels); a CPU canvas for those silences Chrome's warning
+           this._pInst._setProperty('drawingContext', this.drawingContext);
+           return this;
+         };

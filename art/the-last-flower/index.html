@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><script src="../_engine/grokly-feed.js"></script><script>if(!new URLSearchParams(location.search).get("h")){history.replaceState(null,"","?h=0x5e1305b91fa8b433301102be39f4337d8b6bab31f64fd841465b1b4103af88a5"+(location.search?"&"+location.search.slice(1):""));}</script>
+<script src="../_engine/seed-shim.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Last Flower — Music Visualizer · Reza Milani</title>
+<style>
+  html, body { margin:0; padding:0; background:#0e0d0b; overflow:hidden; }
+  canvas { display:block; }
+</style>
+<script>
+  window.tokenData = {
+    // کلید Generate: هش از ?h= خوانده می‌شود؛ هش‌های پیش‌فرض همان اثر اصلی را می‌دهند
+    hash: (function () { var q = new URLSearchParams(location.search).get("h") || "", O = "0x2f6b81ce04a97d35e8b1027fa6c34d90e57b268af1039cd7be425a80f36c19d4";
+      return /^0x[0-9a-f]{64}$/i.test(q) && q !== "0x6d696c616e69617274652d6772" + "0".repeat(38) && q !== "0x5e1305b91fa8b433301102be39f4337d8b6bab31f64fd841465b1b4103af88a5" ? q.toLowerCase() : O; })(),
+    tokenId: "16",
+    externalAssetDependencies: [{ data: { palette: "Verdant" } }]
+  };
+  window.__trunks = 1;
+</script>
+<script src="../_shared/p5-06b486e8.min.js"></script><script src="../_engine/viz-audio.js"></script><script src="tlf-sound.js"></script>
+</head>
+<body>
+<script>
+if (window.__poemSketchLoaded) { } else {
+window.__poemSketchLoaded = true;
+(function () {
+if (typeof window === "undefined") return;
+function report() {}
+window.__abReport = report;
+window.__abClear = function () {};
+window.addEventListener("unhandledrejection", function (e) {
+e.preventDefault();
+});
+window.addEventListener("error", function (e) {
+const s = String((e && e.message) || "") + " " + String((e && e.filename) || "");
+if (/metamask|ethereum|wallet|extension/i.test(s)) {
+e.preventDefault();
+e.stopImmediatePropagation();
+}
+}, true);
+try {
+const noop = function () {};
+console.log = noop;
+console.warn = noop;
+console.info = noop;
+console.debug = noop;
+console.error = noop;
+} catch (e) {}
+})();
+if (typeof tokenData === "undefined") {
+window.tokenData = {
+hash:
+"0x" +
+Array.from({ length: 64 }, () => "0123456789abcdef"[(Math.random() * 16) | 0]).join(""),
+tokenId: "0",
+};
+}
+class Random {
+constructor(hash) {
+this.hash = hash || tokenData.hash;
+this.reset();
+}
+reset() {
+this.useA = false;
+const sfc32 = function (uint128Hex, skip) {
+let a = parseInt(uint128Hex.substring(0, 8), 16);
+let b = parseInt(uint128Hex.substring(8, 16), 16);
+let c = parseInt(uint128Hex.substring(16, 24), 16);
+let d = parseInt(uint128Hex.substring(24, 32), 16);
+// warm-up: the same `skip` steps as calling the generator `skip` times, on plain locals (no call per step)
+{
+let A = a, B = b, C = c, D = d;
+for (let i = 0; i < (skip || 0); i++) {
+A |= 0; B |= 0; C |= 0; D |= 0;
+const t = (((A + B) | 0) + D) | 0;
+D = (D + 1) | 0;
+A = B ^ (B >>> 9);
+B = (C + (C << 3)) | 0;
+C = (C << 21) | (C >>> 11);
+C = (C + t) | 0;
+}
+a = A; b = B; c = C; d = D;
+}
+return function () {
+a |= 0; b |= 0; c |= 0; d |= 0;
+let t = (((a + b) | 0) + d) | 0;
+d = (d + 1) | 0;
+a = b ^ (b >>> 9);
+b = (c + (c << 3)) | 0;
+c = (c << 21) | (c >>> 11);
+c = (c + t) | 0;
+return (t >>> 0) / 4294967296;
+};
+};
+// each stream warmed up by 500000 steps, exactly as the old loop (1e6 / 2 calls on each)
+this.prngA = new sfc32(this.hash.substring(2, 34), 5e5);
+this.prngB = new sfc32(this.hash.substring(34, 66), 5e5);
+}
+random_dec() {
+this.useA = !this.useA;
+return this.useA ? this.prngA() : this.prngB();
+}
+random_num(a, b) { return a + (b - a) * this.random_dec(); }
+random_int(a, b) { return Math.floor(this.random_num(a, b + 1)); }
+random_bool(p) { return this.random_dec() < p; }
+random_choice(list) { return list[this.random_int(0, list.length - 1)]; }
+}
+let R = new Random(tokenData.hash);
+const rnd = {
+dec: () => R.random_dec(),
+num: (a, b) => (b === undefined ? R.random_num(0, a === undefined ? 1 : a) : R.random_num(a, b)),
+int: (a, b) => R.random_int(a, b),
+bool: (p) => R.random_bool(p),
+pick: (list) => R.random_choice(list),
+};
+function createRandom(hash) {
+const s = new Random(hash);
+const fn = () => s.random_dec();
+fn.reset = () => s.reset();
+return fn;
+}
+function postParams() {
+try {
+if (!tokenData || !tokenData.externalAssetDependencies) return {};
+const dep = tokenData.externalAssetDependencies[0];
+return dep && dep.data ? dep.data : {};
+} catch (e) { return {}; }
+}
+const AB = {
+hash: tokenData.hash,
+tokenId: tokenData.tokenId,
+createRandom,
+params: postParams(),
+features(obj) {
+try {
+window.$features = Object.assign({}, window.$features, obj);
+} catch (e) {}
+},
+param(name) {
+const v = this.params[name];
+return v === "" || v === undefined || v === null ? undefined : String(v);
+},
+};
+const PALETTES = {
+"Azure Drift": ["#023e8a", "#0077b6", "#0096c7", "#00b4d8", "#48cae4", "#90e0ef", "#caf0f8"],
+"Autumn Ember": ["#cd4446", "#fd3741", "#f2bc45", "#e2c48c", "#c8958b", "#e9e0d6", "#fe4f11"],
+"Verdant": ["#073b3a", "#0b6e4f", "#248277", "#56ab91", "#88d4ab", "#a3b18a", "#ecf39e"],
+"Ash & Ink": ["#111111", "#2f2f2f", "#585858", "#817c77", "#b7b3ad", "#dedbd4", "#f5f3ee"],
+"Violet Hour": ["#2b1b4d", "#49619d", "#604791", "#721e7f", "#9b2b77", "#ab2562", "#e7c6ff"],
+"Sunset Bloom": ["#ff6800", "#ffa61a", "#ffc219", "#e24646", "#e98952", "#efb4a5", "#fed27a"],
+};
+const PALETTE_WEIGHTS = {
+"Azure Drift": 26, "Autumn Ember": 20, "Verdant": 18,
+"Ash & Ink": 14, "Violet Hour": 12, "Sunset Bloom": 10,
+};
+const paletteName = (() => {
+const names = Object.keys(PALETTE_WEIGHTS);
+const total = names.reduce((t, n) => t + PALETTE_WEIGHTS[n], 0);
+let r = rnd.num(0, total);
+let drawn = names[0];
+for (const n of names) { r -= PALETTE_WEIGHTS[n]; if (r <= 0) { drawn = n; break; } }
+const chosen = AB.param("palette");
+return PALETTES[chosen] ? chosen : drawn;
+})();
+const PALETTE = PALETTES[paletteName];
+const W = 400;
+const H = 500;
+const TLF_PD = window.__GROKLY_FEED ? 1080 / Math.max(W, H) : 3; // در گروکلی ۱۰۸۰ پیکسل بس است (به جای ۱۵۰۰)؛ همان نقش، سبک‌تر
+const MAT = 70;
+const PAPER = [245, 240, 230];
+function pc(aMin, aMax, band) {
+const list = band === "deep" ? PALETTE.slice(0, 4) : band === "pale" ? PALETTE.slice(4) : PALETTE;
+const c = color(list[rnd.int(0, list.length - 1)]);
+c.setAlpha(aMax === undefined ? aMin : rnd.num(aMin, aMax));
+return c;
+}
+const TRUNKS = (function () {
+const drawn = rnd.int(3, 6);
+return typeof window.__trunks === "number" ? window.__trunks : drawn;
+})();
+const RIPPLE = rnd.num(0.7, 2.1);
+const WIND_DIR = rnd.bool(0.5) ? 1 : -1;
+const SEED_COUNT = rnd.int(10, 26);
+const BLOSSOM = rnd.int(14, 46);
+const REDS = ["#9E2F22", "#C74632", "#B83A2F", "#7E241C", "#D06A45"];
+const RED_FLOWERS = rnd.int(3, 9);
+const WATER_LINE = rnd.num(0.42, 0.58);
+let BASE = null;
+let WAVE = null;
+let REFL = null;
+let TREE = null;
+let smallBranchPoints = [];
+function roughRect(g, x, y, w, h) {
+g.beginShape();
+for (let i = 0; i <= 10; i++) g.vertex(lerp(x, x + w, i / 10) + rnd.num(-3, 3), y + rnd.num(-3, 3));
+for (let i = 0; i <= 10; i++) g.vertex(x + w + rnd.num(-3, 3), lerp(y, y + h, i / 10) + rnd.num(-3, 3));
+for (let i = 0; i <= 10; i++) g.vertex(lerp(x + w, x, i / 10) + rnd.num(-3, 3), y + h + rnd.num(-3, 3));
+for (let i = 0; i <= 10; i++) g.vertex(x + rnd.num(-3, 3), lerp(y + h, y, i / 10) + rnd.num(-3, 3));
+g.endShape(CLOSE);
+}
+function roughBorder(g, thickness) {
+g.noFill();
+g.stroke(PAPER[0], PAPER[1], PAPER[2]);
+g.strokeWeight(thickness * 3);
+const steps = 15;
+g.beginShape();
+for (let i = 0; i <= steps; i++) g.vertex(map(i, 0, steps, 0, W), rnd.num(0, thickness / 3));
+for (let i = 0; i <= steps; i++) g.vertex(W + rnd.num(0, thickness / 3), map(i, 0, steps, 0, H));
+for (let i = 0; i <= steps; i++) g.vertex(map(i, 0, steps, W, 0), H + rnd.num(0, thickness / 3));
+for (let i = 0; i <= steps; i++) g.vertex(rnd.num(0, thickness / 3), map(i, 0, steps, H, 0));
+g.endShape(CLOSE);
+}
+function wavyLine(g, y, prev) {
+let base = pc(80, 140);
+if (prev) base = lerpColor(prev, base, 0.5);
+const amp = rnd.num(1, 3);
+const freq = rnd.num(0.01, 0.03);
+let px = 0;
+let py = y + sin(px * freq) * amp;
+for (let x = 1; x <= W; x++) {
+const ny = y + sin(x * freq) * amp + rnd.num(-1.5, 1.5);
+g.stroke(0, rnd.num(0, 90));
+g.strokeWeight(rnd.num(0.1, 1.2));
+g.line(px + 10, py, x + 10, ny);
+g.stroke(base);
+g.strokeWeight(rnd.num(0.1, 3));
+g.line(px, py, x, ny);
+px = x;
+py = ny;
+}
+return base;
+}
+function blocks(g, n, paperOnly) {
+const base = pc(150, 250);
+for (let i = 0; i < n; i++) {
+const x = rnd.num(0, W);
+const y = rnd.num(0, H);
+const w = rnd.num(5, 900);
+const h = rnd.num(0.3, 4);
+g.noStroke();
+if (paperOnly) g.fill(PAPER[0], PAPER[1], PAPER[2], rnd.num(90, 190));
+else g.fill(base);
+roughRect(g, x, y, w, h);
+}
+}
+function paintBase() {
+const g = createGraphics(W, H);
+g.pixelDensity(TLF_PD);
+g.background(PAPER[0], PAPER[1], PAPER[2]);
+try {
+g.loadPixels();
+for (let i = 0; i < g.pixels.length; i += 4) {
+const n = rnd.num(-5, 5);
+g.pixels[i] += n;
+g.pixels[i + 1] += n;
+g.pixels[i + 2] += n;
+}
+for (let k = g.pixels.length / 4; k < W * 3 * H * 3; k++) rnd.num(-5, 5); // با تراکم کمتر، همان تعداد عدد تصادفی مصرف می‌شود تا بقیهٔ اثر (درخت، …) عین اصل بماند
+g.updatePixels();
+} catch (e) {}
+return g;
+}
+function paintWave() {
+const g = createGraphics(W, H);
+g.pixelDensity(TLF_PD);
+let prev = null;
+for (let y = 0; y < H; y += 12) prev = wavyLine(g, y, prev);
+blocks(g, 460, false);
+roughBorder(g, 40);
+blocks(g, 330, true);
+roughBorder(g, 10);
+return g;
+}
+function smallBranch(g, x, y, angle, depth) {
+const length = rnd.num(40, 150) * (1 - depth * 0.3);
+if (length < 5) return;
+const segments = int(length / 6);
+let px = x;
+let py = y;
+for (let i = 1; i <= segments; i++) {
+const nx = px + cos(angle) * rnd.num(3, 5);
+const ny = py + sin(angle) * rnd.num(3, 5);
+g.stroke(30, 30, 30, rnd.num(150, 220));
+g.strokeWeight(rnd.num(0.6, 1.6));
+g.line(px, py, nx, ny);
+smallBranchPoints.push({ x: nx, y: ny });
+if (rnd.dec() < 0.1 && depth < 2) {
+smallBranch(g, nx, ny, angle + rnd.num(-PI / 3, PI / 3), depth + 1);
+}
+px = nx;
+py = ny;
+angle += rnd.num(-0.25, 0.25);
+}
+}
+function growBranch(g, x1, y1, x2, y2) {
+const steps = int(dist(x1, y1, x2, y2) / 5);
+const pts = [];
+for (let i = 1; i <= steps; i++) {
+const t = i / steps;
+const x = lerp(x1, x2, t) + rnd.num(-4, 7);
+const y = lerp(y1, y2, t) + rnd.num(-4, 8);
+pts.push({ x, y });
+if (rnd.dec() < 0.1 && i > steps * 0.2) {
+smallBranch(g, x, y, -PI / 4 + rnd.num(-0.1, 0.1), 0);
+smallBranch(g, x, y, (-3 * PI) / 4 + rnd.num(-0.1, 0.1), 0);
+}
+}
+return pts;
+}
+function inkBranch(g, branch) {
+for (let i = 1; i < branch.length; i++) {
+const p1 = branch[i - 1];
+const p2 = branch[i];
+g.stroke(255, rnd.num(30, 200));
+g.strokeWeight(rnd.num(1.2, 4));
+g.line(p1.x + 4, p1.y, p2.x, p2.y);
+g.stroke(30, 30, 30, rnd.num(180, 255));
+g.strokeWeight(rnd.num(1.2, 4.5));
+g.line(p1.x, p1.y, p2.x, p2.y);
+}
+}
+function reflectBranch(g, branch) {
+if (!branch.length) return;
+const root = branch[0];
+for (let i = 1; i < branch.length; i++) {
+const p1 = branch[i - 1];
+const p2 = branch[i];
+const r1 = root.y + (root.y - p1.y) * 0.82;
+const r2 = root.y + (root.y - p2.y) * 0.82;
+if (r1 < root.y && r2 < root.y) continue;
+const depth = constrain((max(r1, r2) - root.y) / max(1, H - root.y), 0, 1);
+if (rnd.dec() < depth * 0.45) continue;
+const jitter = depth * 6 * RIPPLE;
+g.stroke(30, 32, 34, rnd.num(170, 255) * (1 - depth * 0.4));
+g.strokeWeight(rnd.num(0.8, 2.6) * (1 - depth * 0.3));
+g.line(p1.x + rnd.num(-jitter, jitter), r1, p2.x + rnd.num(-jitter, jitter), r2);
+g.stroke(pc(60, 170, "deep"));
+g.strokeWeight(rnd.num(0.6, 2) * (1 - depth * 0.35));
+g.line(p1.x + rnd.num(-jitter, jitter), r1, p2.x + rnd.num(-jitter, jitter), r2);
+g.stroke(pc(20, 70, "pale"));
+g.strokeWeight(rnd.num(0.5, 1.6));
+g.line(p1.x + rnd.num(-jitter, jitter) * 1.7, r1, p2.x + rnd.num(-jitter, jitter) * 1.7, r2);
+}
+}
+function blossoms(g, branches) {
+for (const branch of branches) {
+if (!branch.length) continue;
+const n = rnd.int(18, 40);
+for (let i = 0; i < n; i++) {
+const p = branch[rnd.int(0, branch.length - 1)];
+g.stroke(pc(150, 255, "deep"));
+g.strokeWeight(rnd.num(0.4, 1.3));
+g.noFill();
+const lx = p.x + rnd.num(-5, 5);
+const ly = p.y + rnd.num(-5, 5);
+for (let j = 0; j < 3; j++) {
+g.line(lx + rnd.num(-1, 1), ly + rnd.num(-1, 1), lx + rnd.num(-2, 2), ly + rnd.num(-6, 6));
+}
+}
+}
+if (!smallBranchPoints.length) return;
+for (let i = 0; i < RED_FLOWERS; i++) {
+const p = smallBranchPoints[rnd.int(0, smallBranchPoints.length - 1)];
+const s = rnd.num(2.6, 5.4);
+const turn = rnd.num(0, TWO_PI);
+g.noStroke();
+for (let j = 0; j < 5; j++) {
+const c = color(REDS[rnd.int(0, REDS.length - 1)]);
+c.setAlpha(rnd.num(170, 240));
+g.fill(c);
+const a = turn + (TWO_PI * j) / 5 + rnd.num(-0.18, 0.18);
+g.ellipse(p.x + cos(a) * s * 0.34, p.y + sin(a) * s * 0.34, s * 0.62, s * 0.5);
+}
+g.fill(50, 40, 30, rnd.num(180, 235));
+g.circle(p.x, p.y, s * 0.26);
+}
+for (let i = 0; i < BLOSSOM; i++) {
+const p = smallBranchPoints[rnd.int(0, smallBranchPoints.length - 1)];
+g.noStroke();
+const bright = rnd.dec() < 0.12;
+if (bright) {
+g.fill(214, 48, 34, rnd.num(180, 245));
+g.circle(p.x, p.y, rnd.num(3.2, 16));
+g.fill(255, 96, 70, rnd.num(140, 210));
+g.circle(p.x + rnd.num(-1.5, 1.5), p.y + rnd.num(-1.5, 1.5), rnd.num(2, 10));
+} else {
+g.fill(255, rnd.num(100, 200));
+g.circle(p.x, p.y, rnd.num(3.2, 16));
+g.fill(255, rnd.num(80, 170));
+g.circle(p.x + rnd.num(-2, 2), p.y + rnd.num(-2, 2), rnd.num(2, 12));
+}
+}
+}
+function buildTree() {
+const surfaceY = H * WATER_LINE;
+TREE = createGraphics(W, H);
+TREE.pixelDensity(TLF_PD);
+REFL = createGraphics(W, H);
+REFL.pixelDensity(TLF_PD);
+const branches = [];
+for (let i = 0; i < TRUNKS; i++) {
+const x1 = rnd.num(MAT * 0.7, W - MAT * 0.7);
+const y1 = surfaceY + rnd.num(-14, 14);
+const x2 = x1 + rnd.num(-130, 130);
+const y2 = y1 - rnd.num(90, 320);
+branches.push(growBranch(TREE, x1, y1, x2, y2));
+}
+for (const b of branches) reflectBranch(REFL, b);
+for (const b of branches) inkBranch(TREE, b);
+blossoms(TREE, branches);
+const anchorBranch = branches.find((b) => b.length) || [];
+bflyAnchor = anchorBranch.length
+? anchorBranch[Math.floor(anchorBranch.length * 0.6)]
+: { x: W / 2, y: surfaceY - 90 };
+}
+let bflyAnchor = null;
+const BFLY = { in: 3.2, orbit: 6.5, out: 3.2, r: 46, gap: 0.7 };
+const BFLY_TIMES = (function () {
+const f = [1, 2];
+while (f[f.length - 1] < 1200) f.push(f[f.length - 1] + f[f.length - 2]);
+return f.map((n) => n * 3);
+})();
+function butterfly(x, y, heading, flap, sc) {
+push();
+translate(x, y);
+rotate(heading);
+const w = 7 * sc;
+const h = 5 * sc;
+const open = 0.35 + 0.65 * abs(flap);
+noStroke();
+for (const s of [-1, 1]) {
+push();
+translate(0, s * h * 0.18);
+rotate(s * (0.25 + open * 0.5));
+fill(28, 26, 24, 225);
+ellipse(-w * 0.15, s * h * 0.45 * open, w * 1.15, h * 1.25 * open);
+ellipse(w * 0.35, s * h * 0.32 * open, w * 0.8, h * 0.85 * open);
+pop();
+}
+fill(214, 48, 34, 200);
+ellipse(-w * 0.15, 0, w * 0.5 * open, h * 0.45 * open);
+fill(20, 18, 16, 240);
+ellipse(0, 0, w * 0.55, h * 0.3);
+pop();
+}
+function bflyAt(uu, a, r, i, dir) {
+if (uu < BFLY.in) {
+const v = uu / BFLY.in;
+return {
+x: lerp(dir > 0 ? -30 : W + 30, a.x - r * dir, v),
+y: lerp(a.y + 70 + i * 18, a.y, v) + sin(uu * 3.1 + i) * 9,
+};
+}
+if (uu < BFLY.in + BFLY.orbit) {
+const v = (uu - BFLY.in) / BFLY.orbit;
+const ang = (dir > 0 ? PI : 0) + dir * v * TWO_PI * 2;
+return {
+x: a.x + cos(ang) * r,
+y: a.y + sin(ang) * r * 0.6 + sin(uu * 2.2 + i) * 4,
+};
+}
+const v = (uu - BFLY.in - BFLY.orbit) / BFLY.out;
+return {
+x: lerp(a.x + r * dir, dir > 0 ? W + 34 : -34, v),
+y: a.y + sin(uu * 2.6 + i) * 12 - v * 26,
+};
+}
+function drawButterflies(mode) {
+const t = tlfMs() / 1000;
+drawingContext.save();
+rainClip();
+const a = bflyAnchor || { x: W / 2, y: H * WATER_LINE - 90 };
+const span = BFLY.in + BFLY.orbit + BFLY.out;
+for (let pass = 0; pass < BFLY_TIMES.length; pass++) {
+const start = BFLY_TIMES[pass];
+if (t < start || t > start + span + 2) continue;
+const dir = pass % 2 === 0 ? 1 : -1;
+for (let i = 0; i < 2; i++) {
+const u = t - start - i * BFLY.gap;
+if (u < 0 || u > span) continue;
+const r = BFLY.r * (i ? 0.72 : 1);
+const p0 = bflyAt(max(0, u - 0.05), a, r, i, dir);
+const p1 = bflyAt(u, a, r, i, dir);
+const heading = atan2(p1.y - p0.y, p1.x - p0.x);
+const fade = constrain(min(1, u / 0.5, (span - u) / 0.6), 0, 1);
+const surfaceY = H * WATER_LINE;
+if (mode !== "body" && p1.y < surfaceY) {
+const ry = surfaceY + (surfaceY - p1.y) * 0.82;
+if (ry < H) {
+const depth = constrain((ry - surfaceY) / max(1, H - surfaceY), 0, 1);
+const jitter =
+sin(ry * 0.09 + windT * 1.9 + wavePhase * 0.03) * (1 + depth * 7) * RIPPLE * (0.5 + gust);
+push();
+drawingContext.save();
+drawingContext.globalAlpha = fade * 0.3 * (1 - depth * 0.5);
+butterfly(p1.x + jitter, ry, -heading, sin(t * 13 + i * 2), (1 - i * 0.15) * 0.95);
+drawingContext.restore();
+pop();
+}
+}
+if (mode === "refl") continue;
+push();
+drawingContext.save();
+drawingContext.globalAlpha = fade;
+butterfly(p1.x, p1.y, heading, sin(t * 13 + i * 2), 1 - i * 0.15);
+drawingContext.restore();
+pop();
+}
+}
+drawingContext.restore();
+}
+const FISH = { start: 6, period: 24, cross: 14 };
+function drawFish() {
+const t = tlfMs() / 1000;
+if (t < FISH.start) return;
+const u = (t - FISH.start) % FISH.period;
+if (u > FISH.cross) return;
+drawingContext.save();
+rainClip();
+const v = u / FISH.cross;
+const surfaceY = H * WATER_LINE;
+const lane = surfaceY + (H - surfaceY) * 0.44;
+const x = lerp(W + 24, -24, v);
+const y = lane + sin(t * 1.3) * 7 + sin(v * 6.2) * 5;
+const wag = sin(t * 7.5) * 0.35;
+const fade = min(1, u / 1.2, (FISH.cross - u) / 1.2);
+const s = 13;
+push();
+drawingContext.save();
+drawingContext.globalAlpha = constrain(fade, 0, 1) * 0.9;
+translate(x, y);
+rotate(sin(t * 1.3 + 1) * 0.08);
+noFill();
+const jit = (k) => sin(t * 9 + k * 2.3) * 0.6;
+const arc = (pts, off) => {
+beginShape();
+for (let k = 0; k < pts.length; k++) {
+curveVertex(pts[k][0] + jit(k + off), pts[k][1] + jit(k + off + 4));
+}
+endShape();
+};
+const upper = [
+[-s * 0.9, s * 0.05],
+[-s * 0.85, 0],
+[-s * 0.3, -s * 0.34],
+[s * 0.35, -s * 0.2],
+[s * 0.62, 0],
+[s * 0.6, s * 0.04],
+];
+const lower = [
+[-s * 0.7, -s * 0.02],
+[-s * 0.66, s * 0.06],
+[-s * 0.15, s * 0.36],
+[s * 0.4, s * 0.2],
+[s * 0.6, s * 0.02],
+[s * 0.58, 0],
+];
+stroke(214, 48, 34, 235);
+strokeWeight(1.6);
+arc(upper, 0);
+stroke(190, 45, 32, 195);
+strokeWeight(1.2);
+arc(lower, 7);
+push();
+translate(s * 0.6, 0);
+rotate(wag);
+stroke(214, 48, 34, 225);
+strokeWeight(1.5);
+line(0, 0, s * 0.85, -s * 0.44);
+line(0, 0, s * 0.8, s * 0.4);
+pop();
+strokeWeight(1);
+stroke(190, 45, 32, 150);
+line(-s * 0.1, s * 0.3, s * 0.22, s * 0.46 + jit(3));
+stroke(190, 45, 32, 120);
+strokeWeight(0.7);
+for (let k = 0; k < 7; k++) {
+const u = -0.6 + k * 0.18;
+const half = (1 - u * u * 1.05) * s * 0.3;
+if (half <= 0) continue;
+const bx = u * s;
+line(bx + jit(k) * 0.4, -half, bx - jit(k + 2) * 0.4 + s * 0.08, half);
+}
+noStroke();
+fill(214, 48, 34, 225);
+circle(-s * 0.6, -s * 0.06, s * 0.12);
+drawingContext.restore();
+pop();
+drawingContext.restore();
+}
+const RAIN = { on: false, drops: [], ripples: [] };
+function rainToggle() {
+RAIN.on = !RAIN.on;
+if (!RAIN.on) RAIN.drops.length = 0;
+}
+if (typeof document !== "undefined") {
+document.addEventListener("keydown", function (e) {
+const k = (e.key || "").toLowerCase();
+if (k === "r") rainToggle();
+else if (k === "s") toggleSound();
+else if (k === "i") INFO_ON = !INFO_ON;
+else if (k === "p") {
+try { saveCanvas("poem-token-" + tokenData.tokenId, "png"); } catch (err) {}
+}
+});
+}
+function rainUpdate() {
+const surfaceY = H * WATER_LINE;
+const dt = min(deltaTime, 60) / 16.7;
+const __sr = window.__TLF ? __TLF.rain : 0; // قطره‌ها با تیزی شروع صدا می‌بارند
+const __n = RAIN.on ? 6 : Math.floor(__sr * 3.2);
+if (__n > 0 && RAIN.drops.length < 100) {
+for (let i = 0; i < __n && RAIN.drops.length < 100; i++) {
+RAIN.drops.push({
+x: rnd.num(-60, W + 60),
+y: RAIN.on ? rnd.num(-H, 0) : rnd.num(-60, MAT),
+v: rnd.num(2.6, 4.6),
+hitY: H * WATER_LINE + rnd.num(0, (H - H * WATER_LINE) * 0.92),
+len: rnd.num(9, 24),
+a: rnd.num(140, 230),
+splashed: false,
+});
+}
+}
+for (let i = RAIN.drops.length - 1; i >= 0; i--) {
+const d = RAIN.drops[i];
+d.y += d.v * dt * (1 + 0.8 * (window.__TLF ? __TLF.rainSpeed : 0)); // سرعت قطره ← تمپو
+d.x += WIND_DIR * (0.6 + gust * 1.6) * dt;
+if (!d.splashed && rnd.dec() < 0.008) {
+RAIN.ripples.push({ x: d.x, y: d.y, r: 1, a: 1 });
+}
+if (d.y >= (d.hitY || surfaceY)) {
+RAIN.ripples.push({ x: d.x, y: d.hitY || surfaceY, r: 1, a: 1 });
+if (RAIN.on) {
+d.y = rnd.num(-H * 0.5, -4);
+d.x = rnd.num(-60, W + 60);
+d.hitY = surfaceY + rnd.num(0, (H - surfaceY) * 0.92);
+d.splashed = false;
+} else {
+RAIN.drops.splice(i, 1);
+}
+}
+}
+if (RAIN.ripples.length > 400) RAIN.ripples.splice(0, RAIN.ripples.length - 400);
+for (let i = RAIN.ripples.length - 1; i >= 0; i--) {
+const p = RAIN.ripples[i];
+p.r += 26 * (min(deltaTime, 60) / 1000);
+p.a -= 0.9 * (min(deltaTime, 60) / 1000);
+if (p.a <= 0) RAIN.ripples.splice(i, 1);
+}
+}
+function rainClip() {
+drawingContext.beginPath();
+drawingContext.rect(MAT, MAT, W - MAT * 2, H - MAT * 2);
+drawingContext.clip();
+}
+function drawRipples() {
+if (!RAIN.ripples.length) return;
+push();
+drawingContext.save();
+rainClip();
+noFill();
+for (const p of RAIN.ripples) {
+stroke(PAPER[0], PAPER[1], PAPER[2], 235 * p.a);
+strokeWeight(1.3);
+ellipse(p.x, p.y, p.r * 2.8, p.r * 0.95);
+stroke(PAPER[0], PAPER[1], PAPER[2], 150 * p.a);
+strokeWeight(0.8);
+ellipse(p.x, p.y + 1.4, p.r * 2.4, p.r * 0.8);
+}
+drawingContext.restore();
+pop();
+}
+function drawRainStreaks() {
+if (!RAIN.drops.length) return;
+push();
+drawingContext.save();
+rainClip();
+for (const d of RAIN.drops) {
+const tx = d.x - WIND_DIR * d.len * 0.35;
+stroke(PAPER[0], PAPER[1], PAPER[2], d.a);
+strokeWeight(1.2);
+line(d.x, d.y, tx, d.y - d.len);
+stroke(0, 0, 0, d.a * 0.85);
+strokeWeight(1);
+line(d.x + 1, d.y, tx + 1, d.y - d.len);
+}
+drawingContext.restore();
+pop();
+}
+const ARTIST = "Reza Milani";
+const COLLECTION = "The Last Flower #1";
+let INFO_ON = false;
+let MUTED = false;
+function toggleSound() {
+MUTED = !MUTED;
+if (typeof AMBIENCE !== "undefined" && AMBIENCE.master && AMBIENCE.ctx) {
+AMBIENCE.master.gain.setTargetAtTime(MUTED ? 0 : 0.85, AMBIENCE.ctx.currentTime, 0.15);
+}
+}
+function drawInfo() {
+if (!INFO_ON) return;
+const TYPE = "'Courier New', Courier, monospace";
+const mat = typeof MAT !== "undefined" ? MAT : 70;
+const capBase = height - mat / 2 - CAPTION_SIZE * 0.7;
+push();
+noStroke();
+textFont(TYPE);
+textStyle(BOLD);
+textAlign(CENTER, BASELINE);
+const rows = [
+COLLECTION + "  ·  " + ARTIST,
+"TOKEN " + tokenData.tokenId + "  ·  " + paletteName.toUpperCase(),
+"R RAIN   S SOUND   P SAVE   I INFO",
+];
+const size = 11;
+textSize(size);
+fill(0, 0, 0, 240);
+let y = capBase - CAPTION_SIZE * 1.6;
+for (let i = rows.length - 1; i >= 0; i--) {
+text(rows[i], width / 2, y);
+y -= size * 1.55;
+}
+textStyle(NORMAL);
+pop();
+}
+const INTRO = { start: 1.2, hold: 7.5, fade: 1.6 };
+function drawIntro() {
+const t = tlfMs() / 1000;
+if (t < INTRO.start || t > INTRO.start + INTRO.hold + INTRO.fade) return;
+const u = t - INTRO.start;
+const a = constrain(min(u / 0.9, (INTRO.hold + INTRO.fade - u) / INTRO.fade), 0, 1);
+const TYPE = "'Courier New', Courier, monospace";
+push();
+noStroke();
+textFont(TYPE);
+textAlign(CENTER, TOP);
+let y = H * 0.5 - 46;
+textStyle(BOLD);
+textSize(15);
+fill(0, 0, 0, 240 * a);
+text(COLLECTION.toUpperCase(), W / 2, y);
+y += 26;
+textStyle(NORMAL);
+textSize(11);
+fill(0, 0, 0, 205 * a);
+for (const l of [
+"R  rain",
+"S  sound",
+"P  save image",
+"I  info",
+]) {
+text(l, W / 2, y);
+y += 16;
+}
+textStyle(NORMAL);
+pop();
+}
+const GRAIN = { frames: 12, fps: 24, scale: 1.1, alpha: 0.1, weave: 0.8 };
+let grainFields = [];
+function buildGrain() {
+const g = AB.createRandom(AB.hash);
+grainFields = [];
+for (let f = 0; f < GRAIN.frames; f++) {
+const img = createImage(ceil(W / GRAIN.scale) + 4, ceil(H / GRAIN.scale) + 4);
+img.loadPixels();
+const px = img.pixels;
+for (let i = 0; i < px.length; i += 4) {
+const n = (g() + g() + g() - 1.5) / 1.5;
+px[i] = px[i + 1] = px[i + 2] = 128 + n * 96;
+px[i + 3] = 255;
+}
+img.updatePixels();
+grainFields.push(img);
+}
+}
+function drawGrain() {
+if (!grainFields.length) return;
+const tick = floor(windT * GRAIN.fps);
+const f = grainFields[tick % grainFields.length];
+const ox = ((tick * 7919) % 17) - 8;
+const oy = ((tick * 104729) % 17) - 8;
+push();
+blendMode(OVERLAY);
+drawingContext.save();
+drawingContext.globalAlpha = GRAIN.alpha;
+image(f, ox + sin(tick * 1.7) * GRAIN.weave, oy + cos(tick * 2.3) * GRAIN.weave,
+f.width * GRAIN.scale, f.height * GRAIN.scale);
+drawingContext.restore();
+pop();
+blendMode(BLEND);
+}
+const STORM = {
+period: rnd.int(11, 21),
+length: rnd.num(5.5, 9),
+rise: rnd.num(0.9, 1.6),
+fall: rnd.num(2.2, 3.6),
+strength: rnd.num(0.7, 1.5),
+};
+let windT = 0;
+let gust = 0;
+let storm = 0;
+let wavePhase = 0;
+let waveSpeed = 0.75;
+function updateWind() {
+if (window.__tlfTick) window.__tlfTick(); // صدا: یک بار در هر فریم
+windT = tlfMs() / 1000;
+const phase = windT % STORM.period;
+if (phase < STORM.rise) {
+storm = pow(phase / STORM.rise, 1.6) * STORM.strength;
+} else if (phase < STORM.length - STORM.fall) {
+storm = STORM.strength * (0.94 + 0.06 * sin(windT * 2.3));
+} else if (phase < STORM.length) {
+const u = (phase - (STORM.length - STORM.fall)) / STORM.fall;
+storm = STORM.strength * pow(1 - u, 2.4);
+} else {
+storm = 0;
+}
+gust = 0.3 + 0.7 * noise(windT * 0.24) + storm * 0.8;
+}
+function drawUnderWater() {
+const p = WAVE;
+if (!p) return;
+const tintC = color(PALETTE[2]);
+const surfaceY = H * WATER_LINE;
+const step = 5;
+push();
+drawingContext.save();
+drawingContext.globalAlpha = 0.45;
+rainClip();
+tint(red(tintC), green(tintC), blue(tintC), 210);
+for (let y = MAT / 2; y < surfaceY; y += step) {
+const h = min(step, surfaceY - y);
+const rise = 1 - y / max(1, surfaceY);
+const sway =
+sin(wavePhase * 0.009 - y * 0.02) * (1.2 + rise * 3 + gust * 2.2) +
+sin(windT * 0.7 + y * 0.05) * (0.3 + gust * 0.6);
+image(p, -sway * 1.35 + 3, y, W, h, 0, y, W, h);
+}
+for (let y = surfaceY; y < H - MAT / 2; y += step) {
+const h = min(step, H - MAT / 2 - y);
+const depth = (y - surfaceY) / max(1, H - surfaceY);
+const rock = sin(wavePhase * 0.02 + depth * 2.4) * (1.5 + depth * 5 + gust * 5);
+const wobble = sin(y * 0.06 + windT * 1.15) * (0.4 + gust * 1.1);
+image(p, -(rock + wobble) * 1.35 - 3, y, W, h, 0, y, W, h);
+}
+noTint();
+drawingContext.restore();
+pop();
+}
+function drawUnderReflection() {
+if (!REFL) return;
+const surfaceY = H * WATER_LINE;
+const step = 4;
+const tintC = color(PALETTE[1]);
+push();
+drawingContext.save();
+drawingContext.globalAlpha = 0.35;
+rainClip();
+tint(red(tintC), green(tintC), blue(tintC), 200);
+for (let y = surfaceY - 16; y < H; y += step) {
+const h = min(step, H - y);
+const depth = constrain((y - surfaceY) / max(1, H - surfaceY), 0, 1);
+const swim =
+sin(y * 0.09 + windT * 1.9 + wavePhase * 0.03) * (1 + depth * 7) * RIPPLE * (0.5 + gust);
+image(REFL, -swim * 1.25 + 4, y + sin(windT * 0.9 + depth * 3) * 0.6, W, h, 0, y, W, h);
+}
+noTint();
+drawingContext.restore();
+pop();
+}
+function drawWater() {
+const dt = min(deltaTime, 60) / 1000;
+const target = 0.75 + gust * 0.55;
+waveSpeed += (target - waveSpeed) * 0.02;
+wavePhase += 26 * waveSpeed * dt;
+const p = WAVE;
+if (!p) return;
+const surfaceY = H * WATER_LINE;
+const step = 3;
+for (let y = MAT / 2; y < surfaceY; y += step) {
+const h = min(step, surfaceY - y);
+const rise = 1 - y / max(1, surfaceY);
+const sway =
+sin(wavePhase * 0.009 - y * 0.02) * (1.2 + rise * 3 + gust * 2.2) +
+sin(windT * 0.7 + y * 0.05) * (0.3 + gust * 0.6);
+image(p, sway + (window.__tlfSky ? __tlfSky(y, rise, windT) : 0), y, W, h, 0, y, W, h); // خطوط بالای آب: صدا
+}
+image(p, 0, 0, W, MAT / 2, 0, 0, W, MAT / 2);
+for (let y = surfaceY; y < H - MAT / 2; y += step) {
+const h = min(step, H - MAT / 2 - y);
+const depth = (y - surfaceY) / max(1, H - surfaceY);
+const rock =
+sin(wavePhase * 0.055 - depth * 7.5) * (2 + depth * 7 + gust * 5) +
+sin(wavePhase * 0.031 + depth * 12.5 + 1.4) * (1.4 + depth * 4.5 + gust * 3.2) +
+sin(wavePhase * 0.017 - depth * 3.1) * (1 + depth * 3);
+const wobble = sin(y * 0.14 + windT * 1.9) * (0.5 + gust * 1.3);
+image(p, rock + wobble + (window.__tlfDeep ? __tlfDeep(y, depth, windT) : 0), y, W, h, 0, y, W, h); // خطوط زیر آب: صدا
+}
+image(p, 0, H - MAT / 2, W, MAT / 2, 0, H - MAT / 2, W, MAT / 2);
+if (window.__TLF) { const fw = MAT * 0.85; image(p, 0, 0, fw, H, 0, 0, fw, H); image(p, W - fw, 0, fw, H, W - fw, 0, fw, H); } // قاب ثابت می‌ماند
+}
+function drawReflection() {
+if (!REFL) return;
+const surfaceY = H * WATER_LINE;
+const step = 4;
+push();
+drawingContext.save();
+drawingContext.globalAlpha = 0.9;
+for (let y = surfaceY - 16; y < H; y += step) {
+const h = min(step, H - y);
+const depth = constrain((y - surfaceY) / max(1, H - surfaceY), 0, 1);
+const swim =
+sin(y * 0.09 + windT * 1.9 + wavePhase * 0.03) * (1 + depth * 7) * RIPPLE * (0.5 + gust);
+const rock = sin(wavePhase * 0.02 + depth * 2.4) * (1.5 + depth * 5 + gust * 5);
+image(REFL, swim + rock + (window.__tlfRefl ? __tlfRefl(y, depth, windT) : 0), y + sin(windT * 0.9 + depth * 3) * 0.6, W, h, 0, y, W, h);
+}
+drawingContext.restore();
+pop();
+}
+function swayTree() {
+if (!TREE) return;
+const bend = WIND_DIR * (sin(windT * 1.1) * 0.9 * (0.4 + gust * 0.7) + storm * 2.2);
+push();
+applyMatrix(1, 0, -bend / H, 1, bend, 0);
+image(TREE, 0, 0, W, H);
+pop();
+}
+const SEED_CYCLE = { period: 8, min: 0.15, max: 1 };
+let seeds = [];
+function makeSeed(spread) {
+const fromLeft = WIND_DIR >= 0;
+return {
+x: spread ? rnd.num(-40, W) : fromLeft ? rnd.num(-60, -10) : rnd.num(W + 10, W + 60),
+y: rnd.num(H * 0.08, H * 0.95),
+r: rnd.num(0.8, 2.4),
+sp: rnd.num(0.35, 1.4),
+phase: rnd.num(0, TWO_PI),
+a: rnd.num(120, 255),
+};
+}
+function driftSeeds() {
+const breath = 0.5 - 0.5 * cos((TWO_PI * windT) / SEED_CYCLE.period);
+const target = round(SEED_COUNT * (SEED_CYCLE.min + (SEED_CYCLE.max - SEED_CYCLE.min) * breath));
+if (seeds.length < target) seeds.push(makeSeed(false));
+const dt = min(deltaTime, 60) / 16.7;
+noStroke();
+for (let i = seeds.length - 1; i >= 0; i--) {
+const s = seeds[i];
+const __T = window.__TLF || {}; // دانه‌ها: سرعت ← وسعت طیف و بلندی، بالا/پایین ← جهت نُت، درخشش ← هوای صدا
+s.x += WIND_DIR * s.sp * (0.5 + gust * 2.1 + 2.2 * (__T.seedRun || 0)) * dt;
+s.y += (sin(windT * 1.7 + s.phase) * 0.5 + (gust - 0.6) * 0.25 - 0.9 * (__T.seedLift || 0)) * dt;
+if (s.x > W + 12 || s.x < -12 || s.y < -12 || s.y > H + 12) {
+if (seeds.length > target) seeds.splice(i, 1);
+else seeds[i] = makeSeed(false);
+continue;
+}
+fill(255, min(255, s.a * (0.55 + gust * 0.45 + 0.5 * (__T.seedGlow || 0))));
+circle(s.x, s.y, s.r * 2);
+fill(255, s.a * (0.18 + 0.3 * (__T.seedGlow || 0)));
+circle(s.x, s.y, s.r * 4.5);
+}
+}
+function setup() {
+window.__abSetup = true;
+createCanvas(W, H);
+pixelDensity(TLF_PD);
+randomSeed(rnd.num(0, 1e9));
+noiseSeed(rnd.num(0, 1e9));
+frameRate(60);
+tlfBuild = tlfBuildG(); // the heavy layers are built over the first frames (see tlfBuildG)
+const cnv = (typeof canvas !== "undefined" && canvas) || document.querySelector("canvas");
+if (cnv && cnv.parentElement) {
+const parent = cnv.parentElement;
+parent.style.height = "100vh";
+parent.style.width = "100vw";
+parent.style.display = "flex";
+parent.style.justifyContent = "center";
+parent.style.alignItems = "center";
+cnv.style.aspectRatio = "2/2.5";
+}
+const fit = () => {
+if (!cnv) return;
+if (window.innerHeight > window.innerWidth) {
+cnv.style.width = "100vw";
+cnv.style.height = "calc(100vw * 2.5/2)";
+} else {
+cnv.style.height = "100vh";
+cnv.style.width = "calc(100vh * 2/2.5)";
+}
+};
+fit();
+window.addEventListener("resize", fit);
+}
+// Startup build. setup() used to paint every layer (paper, waves, tree, film grain) in one go: one task of seconds
+// that froze the whole Grokly app (the artworks share its main thread). The same work, in the same order with the
+// same random draws, now runs as a resumable build of TLF_UNITS work units per frame, before the first drawn frame.
+// While it runs the piece's clock stands still: draw() only continues the build, gives the frame count back and
+// tlfMs() stays at the first frame's time, so the frame that ends the build draws exactly the old first frame and
+// every later frame is the same as before. In Grokly window.__groklyReady stays false until the piece reaches the
+// frame Grokly showed first before (TLF_READY_FRAME, its default warm-up), so the first shown or exported frame is
+// unchanged.
+const TLF_UNITS = 40000, TLF_READY_FRAME = 3;
+let tlfBuild = null, tlfUnits = 0, tlfT0 = 0, tlfShift = 0, tlfFrames = 0, tlfWall = 0;
+// millis() at every draw call in Grokly until ready (index = draw call number, from 1): Grokly's warm-up clock is the
+// same on every run, so until the first shown frame the piece's frame n reads exactly the time it read before
+const tlfAt = [0];
+if (window.__GROKLY_FEED) window.__groklyReady = false;
+function tlfMs() {
+if (window.__GROKLY_FEED && window.__groklyReady === false && frameCount < tlfAt.length) return tlfAt[frameCount];
+return millis() - tlfShift;
+}
+// pause point: true when this frame's share of work is used up
+function tlfSpent(u) {
+tlfUnits += u;
+// opened on its own (real clock, nothing to keep frame-exact) the build may use ~25 ms of each frame
+if (!window.__GROKLY_FEED) return performance.now() - tlfWall > 25;
+return tlfUnits >= TLF_UNITS;
+}
+function* paintBaseG() {
+const g = createGraphics(W, H);
+g.pixelDensity(TLF_PD);
+g.background(PAPER[0], PAPER[1], PAPER[2]);
+try {
+g.loadPixels();
+for (let i = 0; i < g.pixels.length; i += 4) {
+const n = rnd.num(-5, 5);
+g.pixels[i] += n;
+g.pixels[i + 1] += n;
+g.pixels[i + 2] += n;
+if ((i & 16383) === 0 && tlfSpent(16384 / 4 * 3)) yield;
+}
+for (let k = g.pixels.length / 4; k < W * 3 * H * 3; k++) { rnd.num(-5, 5); if ((k & 16383) === 0 && tlfSpent(16384)) yield; } // با تراکم کمتر، همان تعداد عدد تصادفی مصرف می‌شود تا بقیهٔ اثر (درخت، …) عین اصل بماند
+g.updatePixels();
+} catch (e) {}
+return g;
+}
+function* paintWaveG() {
+const g = createGraphics(W, H);
+g.pixelDensity(TLF_PD);
+let prev = null;
+for (let y = 0; y < H; y += 12) { prev = wavyLine(g, y, prev); if (tlfSpent(W * 30)) yield; }
+yield* blocksG(g, 460, false);
+roughBorder(g, 40);
+yield* blocksG(g, 330, true);
+roughBorder(g, 10);
+return g;
+}
+function* blocksG(g, n, paperOnly) {
+const base = pc(150, 250);
+for (let i = 0; i < n; i++) {
+const x = rnd.num(0, W);
+const y = rnd.num(0, H);
+const w = rnd.num(5, 900);
+const h = rnd.num(0.3, 4);
+g.noStroke();
+if (paperOnly) g.fill(PAPER[0], PAPER[1], PAPER[2], rnd.num(90, 190));
+else g.fill(base);
+roughRect(g, x, y, w, h);
+if (tlfSpent(w * 3 + 400)) yield;
+}
+}
+function* buildGrainG() {
+const g = AB.createRandom(AB.hash);
+grainFields = [];
+for (let f = 0; f < GRAIN.frames; f++) {
+const img = createImage(ceil(W / GRAIN.scale) + 4, ceil(H / GRAIN.scale) + 4);
+img.loadPixels();
+const px = img.pixels;
+for (let i = 0; i < px.length; i += 4) {
+const n = (g() + g() + g() - 1.5) / 1.5;
+px[i] = px[i + 1] = px[i + 2] = 128 + n * 96;
+px[i + 3] = 255;
+if ((i & 16383) === 0 && tlfSpent(16384 / 4 * 4)) yield;
+}
+img.updatePixels();
+grainFields.push(img);
+}
+}
+function* tlfBuildG() {
+BASE = yield* paintBaseG();
+WAVE = yield* paintWaveG();
+if (tlfSpent(1e9)) yield;
+buildTree();
+if (tlfSpent(1e9)) yield;
+try { yield* buildGrainG(); } catch (e) { grainFields = []; }
+seeds = [];
+for (let i = 0; i < SEED_COUNT; i++) seeds.push(makeSeed(true));
+}
+
+function draw() {
+if (window.__GROKLY_FEED && window.__groklyReady === false) tlfAt.push(millis());
+if (tlfBuild) {
+const now = millis();
+if (!tlfT0) tlfT0 = now;
+tlfShift = now - tlfT0;
+if (tlfFrames++ > 0) p5.instance._setProperty("frameCount", frameCount - 1);
+tlfUnits = 0;
+tlfWall = performance.now();
+let done = false;
+try { done = tlfBuild.next().done; } catch (e) { done = true; if (window.__abReport) window.__abReport("build: " + e.message, String(e.stack || "")); }
+if (!done) return;
+tlfBuild = null;
+}
+draw0();
+if (window.__GROKLY_FEED && frameCount >= TLF_READY_FRAME) window.__groklyReady = true;
+}
+function draw0() {
+if (!window.__abFirstFrame) {
+window.__abFirstFrame = true;
+if (window.__abClear) window.__abClear();
+}
+try {
+background(PAPER[0], PAPER[1], PAPER[2]);
+updateWind();
+if (BASE) image(BASE, 0, 0, W, H);
+drawReflection();
+drawButterflies("refl");
+rainUpdate();
+drawWater();
+drawRainStreaks();
+drawRipples();
+swayTree();
+driftSeeds();
+drawGrain();
+} catch (e) {
+noLoop();
+if (window.__abReport) window.__abReport("draw: " + e.message, String(e.stack || ""));
+}
+}
+try {
+window.$features = {
+Palette: paletteName,
+Branches: TRUNKS < 4 ? "Sparse" : TRUNKS < 6 ? "Standing" : "Thicket",
+Surface: WATER_LINE < 0.47 ? "High" : WATER_LINE < 0.53 ? "Level" : "Low",
+Ripple: RIPPLE < 1.1 ? "Still" : RIPPLE < 1.6 ? "Stirring" : "Broken",
+Blossom: BLOSSOM < 24 ? "Sparse" : BLOSSOM < 36 ? "Late" : "Holding",
+Red: RED_FLOWERS < 5 ? "Three" : RED_FLOWERS < 8 ? "A Few" : "Several",
+};
+} catch (e) {}
+const MUSIC = {
+ready: false,
+ctx: null,
+out: null,
+wet: null,
+gust: 0.5,
+storm: 0,
+setWorld(gust, storm) {
+this.gust = gust;
+this.storm = storm;
+},
+};
+let mrnd = null;
+const mnum = (a = 1, b) => (b === undefined ? mrnd() * a : a + (b - a) * mrnd());
+const mpick = (list) => list[Math.floor(mrnd() * list.length)];
+const MODES = {
+aeolian: [0, 2, 3, 5, 7, 8, 10],
+dorian: [0, 2, 3, 5, 7, 9, 10],
+phrygian: [0, 1, 3, 5, 7, 8, 10],
+pentatonic: [0, 3, 5, 7, 10],
+ionian: [0, 2, 4, 5, 7, 9, 11],
+};
+let SCORE = null;
+function buildScore() {
+const M = new Random(AB.hash);
+mrnd = () => M.random_dec();
+SCORE = {
+root: 50 + Math.floor(mnum(0, 8)),
+mode: mpick(["aeolian", "dorian", "phrygian", "pentatonic", "ionian"]),
+bpm: 48 + mnum(0, 14),
+_bpmDraw: 0,
+silence: mnum(0.25, 0.6),
+warmth: mnum(0.2, 0.9),
+register: mnum(-3, 5),
+spread: mnum(0.3, 1),
+bassEvery: 4 + Math.floor(mnum(0, 5)),
+tail: mnum(2.6, 4.4),
+};
+SCORE._bpmDraw = SCORE.bpm;
+const mode = (AB.param("mode") || "").toLowerCase();
+if (MODES[mode]) SCORE.mode = mode;
+const tempo = (AB.param("tempo") || "").toLowerCase();
+const bands = { held: [48, 52], walking: [52, 57], flowing: [57, 62] };
+if (bands[tempo]) {
+const [lo, hi] = bands[tempo];
+const frac = (SCORE._bpmDraw - 48) / 14;
+SCORE.bpm = lo + (hi - lo) * frac;
+}
+}
+function initMusic(ctx, master) {
+const room = ctx.createConvolver();
+room.buffer = impulse(ctx, SCORE.tail, 2.2);
+const wet = ctx.createGain();
+wet.gain.value = 0.5 + SCORE.warmth * 0.35;
+const dry = ctx.createGain();
+dry.gain.value = 0.55;
+const tone = ctx.createBiquadFilter();
+tone.type = "lowpass";
+tone.frequency.value = 3200;
+tone.Q.value = 0.4;
+const bus = ctx.createGain();
+bus.gain.value = 0.9;
+bus.connect(tone);
+tone.connect(dry).connect(master);
+tone.connect(room).connect(wet).connect(master);
+MUSIC.ctx = ctx;
+MUSIC.out = bus;
+MUSIC.tone = tone;
+MUSIC.ready = true;
+startPerformance();
+}
+function impulse(ctx, seconds, curve) {
+const len = Math.floor(ctx.sampleRate * seconds);
+const buf = ctx.createBuffer(2, len, ctx.sampleRate);
+for (let ch = 0; ch < 2; ch++) {
+const d = buf.getChannelData(ch);
+for (let i = 0; i < len; i++) {
+d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, curve);
+}
+}
+return buf;
+}
+const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+function scaleNote(degree) {
+const steps = MODES[SCORE.mode];
+const oct = Math.floor(degree / steps.length);
+const idx = ((degree % steps.length) + steps.length) % steps.length;
+return SCORE.root + steps[idx] + oct * 12;
+}
+function pianoNote(at, midi, vel) {
+const ctx = MUSIC.ctx;
+const f = mtof(midi);
+const wind = MUSIC.gust;
+const dur = (SCORE.tail * 0.55 + wind * 1.6) * (0.7 + vel * 0.6);
+const nb = ctx.createBufferSource();
+nb.buffer = hammerBuffer(ctx);
+const nf = ctx.createBiquadFilter();
+nf.type = "bandpass";
+nf.frequency.value = Math.min(9000, f * 3.2);
+nf.Q.value = 0.9;
+const ng = ctx.createGain();
+ng.gain.setValueAtTime(0.0001, at);
+ng.gain.exponentialRampToValueAtTime(0.16 * vel, at + 0.004);
+ng.gain.exponentialRampToValueAtTime(0.0001, at + 0.09);
+nb.connect(nf).connect(ng).connect(MUSIC.out);
+nb.start(at);
+nb.stop(at + 0.12);
+const partials = [
+[1, 1.0, dur],
+[2.003, 0.42, dur * 0.72],
+[3.011, 0.2, dur * 0.5],
+[4.02, 0.09, dur * 0.34],
+];
+const drift = (wind - 0.5) * 3 + mnum(-1.2, 1.2);
+for (const [mult, amp, d] of partials) {
+const o = ctx.createOscillator();
+o.type = mult === 1 ? "triangle" : "sine";
+o.frequency.value = f * mult;
+o.detune.value = drift * mult;
+const g = ctx.createGain();
+g.gain.setValueAtTime(0.0001, at);
+g.gain.exponentialRampToValueAtTime(0.22 * amp * vel, at + 0.012);
+g.gain.exponentialRampToValueAtTime(0.0001, at + d);
+o.connect(g).connect(MUSIC.out);
+o.start(at);
+o.stop(at + d + 0.1);
+}
+if (mrnd() < 0.35) {
+const o = ctx.createOscillator();
+o.type = "sine";
+o.frequency.value = f * 1.4983;
+const g = ctx.createGain();
+g.gain.setValueAtTime(0.0001, at + 0.02);
+g.gain.exponentialRampToValueAtTime(0.03 * vel, at + 0.25);
+g.gain.exponentialRampToValueAtTime(0.0001, at + dur * 1.2);
+o.connect(g).connect(MUSIC.out);
+o.start(at);
+o.stop(at + dur * 1.3);
+}
+}
+let _hammerBuf = null;
+function hammerBuffer(ctx) {
+if (_hammerBuf) return _hammerBuf;
+const len = Math.floor(ctx.sampleRate * 0.12);
+const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+const d = buf.getChannelData(0);
+for (let i = 0; i < len; i++) {
+d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+}
+_hammerBuf = buf;
+return buf;
+}
+let nextBeat = 0;
+let beat = 0;
+let centre = 0;
+function startPerformance() {
+centre = SCORE.register;
+nextBeat = MUSIC.ctx.currentTime + 1.2;
+setInterval(tick, 90);
+}
+function tick() {
+const ctx = MUSIC.ctx;
+if (!ctx) return;
+const horizon = ctx.currentTime + 0.5;
+while (nextBeat < horizon) {
+playBeat(nextBeat);
+const bpm = SCORE.bpm + MUSIC.gust * 6 + MUSIC.storm * 5;
+nextBeat += (60 / bpm) * (0.94 + mnum(0, 0.12));
+beat++;
+}
+}
+function playBeat(at) {
+const wind = MUSIC.gust;
+const storm = MUSIC.storm;
+const life = 0.35 + wind * 0.35 + storm * 0.3;
+const rest = SCORE.silence * (1.25 - life);
+centre += mnum(-0.35, 0.35) + Math.sin(beat * 0.017) * 0.12;
+centre = Math.max(-4, Math.min(9, centre));
+if (beat % SCORE.bassEvery === 0) {
+const bass = scaleNote(Math.round(mnum(-1, 1))) - 24;
+pianoNote(at + mnum(-0.02, 0.02), bass, 0.5 + mnum(0, 0.2));
+}
+if (mrnd() < rest) return;
+const voices = 1 + (mrnd() < 0.35 + storm * 0.25 ? 1 : 0) + (mrnd() < 0.12 ? 1 : 0);
+for (let v = 0; v < voices; v++) {
+const deg = Math.round(centre + mnum(-2.4, 2.4) * SCORE.spread + v * 2);
+const push = mnum(-0.028, 0.028) + v * mnum(0.01, 0.05);
+const vel = 0.32 + mnum(0, 0.3) + wind * 0.12 - v * 0.06;
+pianoNote(at + push, scaleNote(deg), Math.max(0.12, Math.min(0.95, vel)));
+}
+MUSIC.tone.frequency.setTargetAtTime(3400 - wind * 900 - storm * 500, MUSIC.ctx.currentTime, 0.6);
+}
+const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+const MODE_NAMES = {
+aeolian: "Aeolian",
+dorian: "Dorian",
+phrygian: "Phrygian",
+pentatonic: "Pentatonic",
+ionian: "Ionian",
+};
+function paletteWeight() {
+let sum = 0;
+for (const hex of PALETTE) {
+const n = parseInt(hex.slice(1), 16);
+sum += (((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114) / 255;
+}
+const l = sum / PALETTE.length;
+return l < 0.45 ? "Deep" : l < 0.62 ? "Soft" : "Bright";
+}
+try {
+buildScore();
+} catch (e) {
+if (window.__abReport) window.__abReport("score could not be built: " + e.message, String(e.stack || ""));
+}
+try {
+window.$features = {
+Palette: paletteName,
+Ink: paletteWeight(),
+Key: NOTE_NAMES[SCORE.root % 12],
+Mode: MODE_NAMES[SCORE.mode],
+Tempo: SCORE.bpm < 52 ? "Held" : SCORE.bpm < 57 ? "Walking" : "Flowing",
+};
+AB.features(window.$features);
+} catch (e) {
+if (window.__abReport) window.__abReport("features could not be computed: " + e.message, String(e.stack || ""));
+}
+if (typeof window !== "undefined") {
+window.setup = setup;
+window.draw = draw;
+}
+const pStream = AB.createRandom(AB.hash);
+const prnd = {
+dec: () => pStream(),
+num: (a, b) => a + (b - a) * pStream(),
+int: (a, b) => Math.floor(a + (b - a + 1) * pStream()),
+};
+const MEMORIES = [
+"childhood", "forgotten summer", "old photograph", "fading voice",
+"first love", "abandoned house", "silent garden", "grandmother's hands",
+"a letter never sent", "a distant farewell", "a childhood road",
+"a familiar face in the crowd", "a lost companion", "an empty chair",
+"the sound of footsteps", "a vanished dream", "an unfinished sentence",
+"a promise from another age", "a song from the past", "a hidden sorrow",
+"a moment before goodbye", "a forgotten celebration", "a childhood window",
+"a name written in dust", "an old path", "a memory buried underground",
+"a place that no longer exists", "a season that disappeared",
+"a conversation with the dead", "a shadow of yesterday",
+"a door that was never opened", "the smell of a summer kitchen",
+"a bicycle left in the rain", "handwriting on a torn page",
+"a photograph with one face missing", "the last day of a long summer",
+"a village left behind", "an argument never finished",
+"a lullaby half remembered", "the weight of a small hand",
+"a birthday nobody came to", "a train leaving at dawn",
+"a coat still hanging by the door", "a border crossed once",
+"the year the well ran dry", "a wedding photograph in a drawer",
+"the field where the horse died", "a book left open",
+"a night spent waiting", "the day the letter arrived",
+];
+const PLACES = [
+"abandoned house", "silent garden", "childhood road", "childhood window",
+"old path", "forgotten garden", "abandoned road", "empty horizon",
+"a place that no longer exists", "old house",
+"riverbank", "orchard wall", "village square", "stone bridge",
+"harvest field", "attic room", "kitchen doorway", "graveyard path",
+"market street", "coastal road", "chapel yard", "mill house",
+"winter station", "quarry edge", "shepherd's track", "hillside",
+"far pasture", "flooded meadow", "school gate", "well in the yard",
+];
+const NATURE = [
+"ancient tree", "lonely river", "autumn leaves", "winter field",
+"silent meadow", "distant hills", "fading flowers", "morning mist",
+"rain on empty streets", "moon above the valley", "wild grass",
+"old forest", "broken branches", "blooming orchard", "cold wind",
+"golden sunset", "grey sky", "drifting clouds", "forgotten garden",
+"river stones", "sleeping valley", "evening shadows", "falling snow",
+"spring blossoms", "abandoned road", "quiet landscape",
+"birds returning", "birds leaving", "waves touching the shore",
+"the changing seasons", "the first frost", "the last flower",
+"the sound of rain", "the whisper of leaves", "the breath of the earth",
+"the empty horizon", "the silent mountains",
+"wheat bending together", "poppies in the corn",
+"a heron on the shallows", "frost on the fence wire",
+"the flooded river field", "hawthorn in flower",
+"the smell of cut hay", "swallows under the eaves",
+"rain arriving over the hill", "the shadow of a cloud crossing",
+"reeds at the water's edge", "the long light of evening",
+"moths at a lit window",
+];
+const TIMES = [
+"Years later", "Decades afterward", "After many winters",
+"In the evening of life", "Beneath the memory of time",
+"When youth had disappeared", "After the last goodbye",
+"Long after the footsteps faded", "Beyond forgotten years",
+"When the old house became silent", "After seasons passed",
+"In another lifetime", "Before the world changed",
+"When yesterday became a dream", "After the river changed its course",
+"When the voices disappeared", "Beyond the boundaries of memory",
+"In the twilight of existence", "During the final autumn",
+"When the photograph turned yellow", "After the garden died",
+"When the names were forgotten", "Before everything was lost",
+"In the distance between then and now",
+"Where past and present meet",
+"Inside the fragile space of remembrance",
+"After the harvest was in", "When the ice broke on the river",
+"Once the road was paved", "After the last train stopped coming",
+"When the orchard was sold", "In the year of the long rain",
+"Before the letters stopped", "When the bells were taken down",
+"After the second winter", "By the time the news travelled",
+"When the fields were divided", "Long after the fair had gone",
+"After the flood had passed", "In the weeks before the wedding",
+];
+const EMOTIONS = [
+"quietly remains", "still whispers", "refuses to disappear",
+"lives beneath the surface", "returns like an echo",
+"waits inside the silence", "slowly fades away",
+"belongs only to memory", "survives through imagination",
+"becomes a distant shadow", "carries an ancient sorrow",
+"holds a forgotten warmth", "speaks without words",
+"remains untouched by time", "disappears into the mist",
+"returns in dreams", "sleeps beneath the earth",
+"becomes a ghost of happiness", "leaves a gentle wound",
+"keeps the heart awake", "becomes a silent companion",
+"turns into a fragile remembrance", "survives as a trace",
+"cannot be recovered, but cannot be forgotten",
+"exists between presence and absence",
+"settles like dust on a sill", "goes on without being asked",
+"wears down to a single image", "asks nothing and stays",
+"moves further off each spring", "is kept, though not looked at",
+"answers only in the dark", "grows kinder with the years",
+"hardens into a small fact", "outlives the people in it",
+"returns whenever it rains", "loses its face but keeps its weather",
+"will not be argued with", "arrives without being called",
+"is carried like a stone in a pocket",
+];
+const STRUCTURES = [
+"[Time], [Nature] remembers [Memory].",
+"[Place] still carries the shadow of [Memory].",
+"I walked through [Place], where [Nature] whispered about [Memory].",
+"After [Time], only [Nature] remained to remember [Memory].",
+"The [Nature] knew what my heart had forgotten.",
+"Between [Time] and silence, [Memory] returned.",
+"The old [Place] kept a secret that belonged to another life.",
+"When the [Nature] changed, the memory of [Memory] survived.",
+"I found my past hidden among the [Nature].",
+"The wind carried the name of someone I once loved.",
+"The river remembered footsteps that no longer existed.",
+"The empty landscape became a home for forgotten dreams.",
+"[Memory] [Emotion].",
+"[Nature], and still [Memory] [Emotion].",
+"In [Place], [Memory] [Emotion].",
+"[Time], [Memory] [Emotion].",
+"Nobody in [Place] speaks of [Memory] now.",
+"[Nature] outlasted everyone who knew [Memory].",
+"What [Place] kept of [Memory] was only [Nature].",
+"[Time], I went back to [Place] and found [Nature].",
+"They say [Nature] took the sound of [Memory] with it.",
+"[Memory] is what [Nature] was standing in.",
+"Nothing in [Place] remembers me but [Nature].",
+"[Time], [Nature] stood where [Place] had been.",
+"I kept [Memory] the way [Place] keeps [Nature].",
+"The years took [Place]; [Memory] [Emotion].",
+"Ask [Nature] about [Memory], and it [Emotion].",
+"Of all that was lost, only [Memory] [Emotion].",
+"[Time], nobody was left to name [Nature].",
+"[Memory] returned as [Nature], and I let it.",
+];
+const MEMORY_STRENGTH = prnd.num(0.72, 0.92);
+const IMAGINATION = 1 - MEMORY_STRENGTH;
+const POEM_LINES = prnd.int(5, 8);
+function inherit(list, n) {
+const out = [];
+const used = {};
+while (out.length < n) {
+const i = prnd.int(0, list.length - 1);
+if (used[i]) continue;
+used[i] = 1;
+out.push(list[i]);
+}
+return out;
+}
+const CORE = {
+memories: inherit(MEMORIES, 5),
+nature: inherit(NATURE, 5),
+times: inherit(TIMES, 4),
+places: inherit(PLACES, 3),
+emotions: inherit(EMOTIONS, 4),
+};
+function recall(core, whole) {
+return prnd.dec() < IMAGINATION
+? whole[prnd.int(0, whole.length - 1)]
+: core[prnd.int(0, core.length - 1)];
+}
+function lower(s) {
+return s.charAt(0).toLowerCase() + s.slice(1);
+}
+function fit(phrase, before) {
+let p = phrase;
+if (/after\s*$/i.test(before)) {
+p = p.replace(/^(when|after)\s+/i, "");
+p = p.replace(/^(years|decades)\s+(later|afterward)$/i, "many years");
+p = p.replace(/\s+(later|afterward)$/i, "");
+}
+if (/\bold\s*$/i.test(before)) p = p.replace(/^old\s+/i, "");
+if (/\bthe\s*$/i.test(before)) p = p.replace(/^the\s+/i, "");
+return p;
+}
+const usedStructures = {};
+function buildLine() {
+let si = prnd.int(0, STRUCTURES.length - 1);
+for (let tries = 0; tries < 6 && usedStructures[si]; tries++) {
+si = prnd.int(0, STRUCTURES.length - 1);
+}
+usedStructures[si] = 1;
+let s = STRUCTURES[si];
+const at = s.indexOf("[Time]");
+if (at >= 0) {
+const before = s.slice(0, at);
+let t = fit(recall(CORE.times, TIMES), before);
+s = s.replace("[Time]", at === 0 ? t : lower(t));
+}
+const fill = (tag, core, whole) => {
+while (true) {
+const i = s.indexOf(tag);
+if (i < 0) break;
+s = s.slice(0, i) + fit(recall(core, whole), s.slice(0, i)) + s.slice(i + tag.length);
+}
+};
+fill("[Nature]", CORE.nature, NATURE);
+fill("[Memory]", CORE.memories, MEMORIES);
+fill("[Place]", CORE.places, PLACES);
+fill("[Emotion]", CORE.emotions, EMOTIONS);
+return s.charAt(0).toUpperCase() + s.slice(1);
+}
+const POEM = (() => {
+const lines = [];
+let last = "";
+while (lines.length < POEM_LINES) {
+const line = buildLine();
+if (line === last) continue;
+last = line;
+lines.push(line);
+}
+return lines;
+})();
+const TITLE = (() => {
+const t = CORE.memories[0];
+return t.charAt(0).toUpperCase() + t.slice(1);
+})();
+const TYPEWRITER = {
+family: "'Courier New', Courier, monospace",
+size: 18,
+weight: 400,
+letterSpacing: 0,
+inkVariation: 0.15,
+};
+const FONT = TYPEWRITER.family;
+const FONT_NAME = "Courier";
+const MEMORY_AGE = prnd.num(4, 96);
+const DECAY = prnd.num(0.12, 0.9);
+const SPREAD = prnd.num(0.1, 1);
+const GHOSTS = prnd.int(1, 5);
+const INSTABILITY = prnd.num(0.01, 0.15);
+const BASE_SIZE = TYPEWRITER.size;
+const INK_SETS = {
+"Lost Love": [[122, 74, 78], [96, 92, 96], [74, 62, 54]],
+Childhood: [[104, 78, 44], [126, 104, 62], [78, 68, 46]],
+Death: [[74, 78, 84], [96, 100, 104], [58, 66, 74]],
+Remembrance: [[44, 40, 36], [78, 72, 64], [58, 54, 48]],
+};
+const MOOD = (() => {
+const all = POEM.join(" ").toLowerCase();
+const score = { "Lost Love": 0, Childhood: 0, Death: 0, Remembrance: 0 };
+const mark = (words, key) => {
+for (const w of words) if (all.indexOf(w) >= 0) score[key]++;
+};
+mark(["love", "farewell", "goodbye", "letter", "promise", "wedding", "companion"], "Lost Love");
+mark(["childhood", "summer", "grandmother", "school", "birthday", "lullaby", "bicycle"], "Childhood");
+mark(["dead", "grave", "buried", "died", "frost", "ash", "silence", "empty chair"], "Death");
+mark(["remember", "forgot", "memory", "years", "dust", "shadow"], "Remembrance");
+let best = "Remembrance";
+for (const k in score) if (score[k] > score[best]) best = k;
+return best;
+})();
+const INKS = INK_SETS[MOOD];
+const HEAVY = ["sorrow", "death", "dead", "grave", "buried", "lost", "never", "goodbye",
+"farewell", "gone", "silence", "silent", "forgotten", "empty", "ash", "frost", "cold",
+"wound", "ghost", "shadow", "died", "no", "nobody", "nothing"];
+const LIGHT = ["childhood", "summer", "blossom", "blossoms", "light", "warm", "warmth",
+"song", "birds", "spring", "morning", "golden", "flower", "flowers", "orchard", "sunset",
+"wedding", "birthday", "lullaby"];
+function wordWeight(word) {
+const w = word.toLowerCase().replace(/[^a-z']/g, "");
+for (const h of HEAVY) if (w === h) return 1;
+for (const l of LIGHT) if (w === l) return -1;
+return 0;
+}
+function planLine(line) {
+const words = line.replace(/[.,;]+$/, "").split(/\s+/);
+const plan = [];
+let row = 0;
+let inRow = 0;
+const maxPerRow = prnd.int(3, 5);
+for (let i = 0; i < words.length; i++) {
+const raw = words[i];
+const weight = wordWeight(raw);
+let shown = raw;
+let broken = false;
+if (prnd.dec() < DECAY * 0.28 && raw.length > 4) {
+const keep = 2 + Math.floor(raw.length * prnd.num(0.35, 0.7));
+shown = raw.slice(0, keep) + "...";
+broken = true;
+} else if (prnd.dec() < DECAY * 0.16 && raw.length > 5) {
+const at = 1 + Math.floor(prnd.num(1, raw.length - 3));
+shown = raw.slice(0, at) + " " + raw.slice(at + 1);
+broken = true;
+}
+plan.push({
+raw,
+shown,
+broken,
+row,
+alpha: prnd.num(0.62, 1) * (prnd.dec() < DECAY * 0.2 ? prnd.num(0.2, 0.4) : 1),
+spacing: SPREAD * prnd.num(0, 5.5),
+size: BASE_SIZE * prnd.num(0.8, 1.35),
+rot: prnd.num(-INSTABILITY, INSTABILITY),
+dy: weight * prnd.num(6, 18) + prnd.num(-4, 4),
+ink: INKS[prnd.int(0, INKS.length - 1)],
+ghosts: prnd.int(0, GHOSTS),
+gx: prnd.num(-9, 9),
+gy: prnd.num(-7, 7),
+keys: (() => {
+const v = TYPEWRITER.inkVariation;
+const k = [];
+for (let c = 0; c < shown.length; c++) {
+k.push({
+dx: prnd.num(-v, v) * 1.6,
+dy: prnd.num(-v, v) * 2.2,
+rot: prnd.num(-v, v) * 0.05,
+ink: 1 - prnd.num(0, v),
+twice: prnd.dec() < v * 0.35,
+});
+}
+return k;
+})(),
+});
+inRow++;
+const lastWord = i === words.length - 1;
+if (!lastWord && (inRow >= maxPerRow || prnd.dec() < 0.22)) {
+row++;
+inRow = 0;
+}
+}
+const rowCount = row + 1;
+const indents = [];
+for (let r = 0; r < rowCount; r++) indents.push(prnd.num(0, 1));
+return { words: plan, rowCount, indents, drift: prnd.num(-1, 1) };
+}
+const PLANS = POEM.map(planLine);
+let pLevel = 0;
+let pLevelAvg = 0;
+let pIdx = 0;
+let pShown = -1;
+let pShownAt = -99;
+let pLastFire = -99;
+const P_HOLD = 4.2;
+const P_REST = 1.6;
+function pSmooth(u) {
+const c = constrain(u, 0, 1);
+return c * c * (3 - 2 * c);
+}
+function pWatchMusic() {
+if (typeof AMBIENCE === "undefined" || !AMBIENCE.ready) return;
+pLevel = AMBIENCE.level || 0;
+pLevelAvg += (pLevel - pLevelAvg) * 0.04;
+const now = tlfMs() / 1000;
+if (pLevel > pLevelAvg * 1.45 + 0.035 && now - pLastFire > P_REST) {
+pLastFire = now;
+pShown = pIdx % PLANS.length;
+pIdx++;
+pShownAt = now;
+}
+}
+function pWord(w, x, y, a, baseAlpha) {
+let cx = x;
+const sp = w.spacing + TYPEWRITER.letterSpacing;
+for (let i = 0; i < w.shown.length; i++) {
+const ch = w.shown[i];
+const k = (w.keys && w.keys[i]) || { dx: 0, dy: 0, rot: 0, ink: 1, twice: false };
+if (baseAlpha !== undefined) fill(w.ink[0], w.ink[1], w.ink[2], baseAlpha * k.ink);
+if (k.rot) {
+push();
+translate(cx + k.dx, y + k.dy);
+rotate(k.rot);
+text(ch, 0, 0);
+if (k.twice) text(ch, 0.5, 0.4);
+pop();
+} else {
+text(ch, cx + k.dx, y + k.dy);
+if (k.twice) text(ch, cx + k.dx + 0.5, y + k.dy + 0.4);
+}
+cx += textWidth(ch) + sp;
+}
+}
+function pWordWidth(w) {
+const sp = w.spacing + TYPEWRITER.letterSpacing;
+let t = 0;
+for (const ch of w.shown) t += textWidth(ch) + sp;
+return t - sp;
+}
+let pInkRows = null;
+let pInkFor = null;
+const P_BAND = 8;
+function pReadPlate() {
+const key = "branches";
+if (pInkFor === key && pInkRows) return pInkRows;
+const bands = ceil(height / P_BAND);
+const rows = new Array(bands).fill(0);
+try {
+const probe = createGraphics(width, height);
+probe.pixelDensity(1);
+if (typeof TREE !== "undefined" && TREE) probe.image(TREE, 0, 0, width, height);
+probe.loadPixels();
+const px = probe.pixels;
+for (let y = 0; y < height; y++) {
+let sum = 0;
+const off = y * width * 4;
+for (let x = 0; x < width; x += 2) sum += px[off + x * 4 + 3];
+rows[floor(y / P_BAND)] += sum / (255 * (width / 2));
+}
+for (let i = 0; i < bands; i++) rows[i] = min(1, rows[i] / P_BAND);
+} catch (e) {}
+pInkRows = rows;
+pInkFor = key;
+return rows;
+}
+function pClearTop(blockH, lo, hi, bias) {
+const rows = pReadPlate();
+if (!rows) return lo;
+const span = max(1, round(blockH / P_BAND));
+let best = lo;
+let bestCost = Infinity;
+for (let t = lo; t <= hi; t += 4) {
+const b0 = floor(t / P_BAND);
+let cost = 0;
+for (let i = b0; i < b0 + span && i < rows.length; i++) cost += rows[i];
+cost /= span;
+cost += abs(t - bias) / height * 0.12;
+if (cost < bestCost) {
+bestCost = cost;
+best = t;
+}
+}
+return best;
+}
+function drawCentreLine() {
+if (pShown < 0) return;
+const plan = PLANS[pShown];
+const age = tlfMs() / 1000 - pShownAt;
+if (age > P_HOLD) return;
+const env = min(pSmooth(age / 0.55), pSmooth((P_HOLD - age) / 1.4));
+const inset = 35 + 6;
+const left = inset;
+const avail = width - inset * 2;
+push();
+textFont(FONT);
+textAlign(LEFT, TOP);
+noStroke();
+const rows = [];
+let widest = 1;
+for (let r = 0; r < plan.rowCount; r++) {
+const row = plan.words.filter((w) => w.row === r);
+rows.push(row);
+if (!row.length) continue;
+let rowW = 0;
+for (const w of row) {
+textSize(w.size);
+rowW += pWordWidth(w) + w.size * 0.55;
+}
+rowW -= row[row.length - 1].size * 0.55;
+widest = max(widest, rowW);
+}
+const fitH = (height - inset * 2 - 16) / (plan.rowCount * BASE_SIZE * 2.6);
+const k = min(1, avail / widest, fitH);
+const rowGap = BASE_SIZE * 2.6 * k;
+const blockH = plan.rowCount * rowGap;
+const lo = inset + 10;
+const hi = max(lo, height - inset - blockH - 8);
+const wanted = constrain(height * 0.42 - blockH / 2 + plan.drift * 40, lo, hi);
+const top = pClearTop(blockH, lo, hi, wanted);
+for (let r = 0; r < plan.rowCount; r++) {
+const row = rows[r];
+if (!row.length) continue;
+let rowW = 0;
+for (const w of row) {
+textSize(w.size * k);
+rowW += pWordWidth(w) + w.size * k * 0.55;
+}
+rowW -= row[row.length - 1].size * k * 0.55;
+let x = left + plan.indents[r] * max(0, avail - rowW);
+const y = top + r * rowGap;
+for (const w of row) {
+textSize(w.size * k);
+const wy = y + w.dy;
+push();
+translate(x, wy);
+rotate(w.rot);
+for (let g = 1; g <= w.ghosts; g++) {
+pWord(w, w.gx * g * 0.5, w.gy * g * 0.5, 0, 235 * w.alpha * env * 0.14 * pInk);
+}
+pWord(w, 0, 0, 0, 235 * w.alpha * env * pInk);
+pop();
+x += pWordWidth(w) + w.size * k * 0.55;
+}
+}
+pop();
+}
+function pageHint() {
+push();
+textFont(FONT);
+textAlign(CENTER, BOTTOM);
+textSize(8.5);
+noStroke();
+fill(INKS[0][0], INKS[0][1], INKS[0][2], 150 + 60 * sin(tlfMs() / 900));
+text("click to hear it read", width / 2, height - 26);
+pop();
+}
+try {
+const plate = window.$features || {};
+window.$features = {
+Palette: plate.Palette,
+Keeps: TITLE,
+Mood: MOOD,
+Remembering: MEMORY_STRENGTH < 0.79 ? "Unreliable" : MEMORY_STRENGTH < 0.86 ? "Faithful" : "Exact",
+Decay: DECAY < 0.35 ? "Clear" : DECAY < 0.62 ? "Worn" : "Nearly Gone",
+Distance: SPREAD < 0.4 ? "Close" : SPREAD < 0.75 ? "Receding" : "Far",
+};
+if (typeof AB !== "undefined" && AB.features) AB.features(window.$features);
+} catch (e) {
+if (window.__abReport) window.__abReport("features: " + e.message, String(e.stack || ""));
+}
+const pInk = 1;
+const CAPTION_SIZE = 14;
+function drawCaption() {
+if (pShown < 0) return;
+const line = POEM[pShown];
+if (!line) return;
+const age = tlfMs() / 1000 - pShownAt;
+if (age > P_HOLD) return;
+const env = min(pSmooth(age / 0.55), pSmooth((P_HOLD - age) / 1.4));
+const mat = typeof MAT !== "undefined" ? MAT : 70;
+push();
+textFont(FONT);
+textStyle(NORMAL);
+textAlign(CENTER, BASELINE);
+let size = CAPTION_SIZE;
+textSize(size);
+const avail = width - mat - 16;
+const w = textWidth(line);
+if (w > avail) {
+size = size * (avail / w);
+textSize(size);
+}
+const ink = INKS[0];
+const baseline = height - mat / 2 - size * 0.7;
+fill(ink[0], ink[1], ink[2], 225 * env);
+noStroke();
+text(line, width / 2, baseline);
+const w2 = textWidth(line) / 2;
+const bx = width / 2 - w2 - size * 0.85;
+const by = baseline - size * 0.32;
+fill(214, 48, 34, 225 * env);
+circle(bx, by, size * 0.52);
+fill(255, 96, 70, 195 * env);
+circle(bx - size * 0.1, by - size * 0.08, size * 0.36);
+pop();
+}
+const AMBIENCE = {
+ready: false,
+level: 0,
+analyser: null,
+_buf: null,
+sea: null,
+wind: null,
+ctx: null,
+setGust(g) {
+if (!this.ready || !this.ctx) return;
+const t = this.ctx.currentTime;
+const swell = 0.5 + 0.5 * Math.sin(t * 0.21);
+if (this.sea) this.sea.gain.setTargetAtTime(0.05 + swell * 0.035 + g * 0.02, t, 0.9);
+if (this.wind) this.wind.gain.setTargetAtTime(0.012 + g * 0.055, t, 0.7);
+if (this.windTone) this.windTone.frequency.setTargetAtTime(420 + g * 900, t, 0.8);
+const wet = typeof RAIN !== "undefined" && RAIN.on;
+if (this.rain) this.rain.gain.setTargetAtTime(wet ? 0.075 + g * 0.02 : 0, t, 0.8);
+if (this.rainTone) this.rainTone.frequency.setTargetAtTime(wet ? 2600 + g * 900 : 2000, t, 1);
+if (this.master) this.master.gain.setTargetAtTime(MUTED ? 0 : 0.85, t, 0.15);
+},
+plink() {
+if (!this.ready || !this.ctx || !this.rain) return;
+const now = this.ctx.currentTime;
+if (now - (this._lastPlink || 0) < 0.07) return;
+this._lastPlink = now;
+const ctx = this.ctx;
+const o = ctx.createOscillator();
+o.type = "sine";
+const f = 900 + Math.random() * 1500;
+o.frequency.setValueAtTime(f, now);
+o.frequency.exponentialRampToValueAtTime(f * 0.55, now + 0.09);
+const g2 = ctx.createGain();
+g2.gain.setValueAtTime(0.0001, now);
+g2.gain.exponentialRampToValueAtTime(0.02 + Math.random() * 0.02, now + 0.006);
+g2.gain.exponentialRampToValueAtTime(0.0001, now + 0.14);
+o.connect(g2).connect(this.master || ctx.destination);
+o.start(now);
+o.stop(now + 0.16);
+},
+readLevel() {
+if (!this.analyser) return;
+this.analyser.getByteTimeDomainData(this._buf);
+let sum = 0;
+for (let i = 0; i < this._buf.length; i++) {
+const v = (this._buf[i] - 128) / 128;
+sum += v * v;
+}
+const rms = Math.sqrt(sum / this._buf.length);
+const target = Math.min(1, rms * 5.5);
+this.level += (target - this.level) * (target > this.level ? 0.35 : 0.08);
+},
+};
+function startAmbience() {
+if (AMBIENCE.ready) return;
+try {
+const Ctx = window.AudioContext || window.webkitAudioContext;
+if (!Ctx) return;
+const ctx = new Ctx();
+if (ctx.state === "suspended") ctx.resume();
+const master = ctx.createGain();
+master.gain.value = 0.85;
+const analyser = ctx.createAnalyser();
+analyser.fftSize = 1024;
+master.connect(analyser);
+master.connect(ctx.destination);
+AMBIENCE.analyser = analyser;
+AMBIENCE._buf = new Uint8Array(analyser.fftSize);
+AMBIENCE.ctx = ctx;
+buildAir(ctx, master);
+AMBIENCE.ready = true;
+if (typeof initMusic === "function") initMusic(ctx, master);
+} catch (e) {}
+}
+function buildAir(ctx, master) {
+const nrnd = new Random(AB.hash);
+const seconds = 4;
+const buf = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+const d = buf.getChannelData(0);
+let last = 0;
+for (let i = 0; i < d.length; i++) {
+const white = nrnd.random_dec() * 2 - 1;
+last = (last + 0.02 * white) / 1.02;
+d[i] = last * 3.2;
+}
+const src = ctx.createBufferSource();
+src.buffer = buf;
+src.loop = true;
+const seaFilter = ctx.createBiquadFilter();
+seaFilter.type = "lowpass";
+seaFilter.frequency.value = 520;
+const sea = ctx.createGain();
+sea.gain.value = 0.06;
+src.connect(seaFilter);
+seaFilter.connect(sea);
+sea.connect(master);
+const windTone = ctx.createBiquadFilter();
+windTone.type = "bandpass";
+windTone.frequency.value = 620;
+windTone.Q.value = 0.7;
+const wind = ctx.createGain();
+wind.gain.value = 0.02;
+src.connect(windTone);
+windTone.connect(wind);
+wind.connect(master);
+src.start();
+AMBIENCE.sea = sea;
+AMBIENCE.wind = wind;
+AMBIENCE.windTone = windTone;
+const rainTone = ctx.createBiquadFilter();
+rainTone.type = "highpass";
+rainTone.frequency.value = 2000;
+const rainBody = ctx.createBiquadFilter();
+rainBody.type = "lowpass";
+rainBody.frequency.value = 7000;
+const rain = ctx.createGain();
+rain.gain.value = 0;
+src.connect(rainTone);
+rainTone.connect(rainBody);
+rainBody.connect(rain);
+rain.connect(master);
+AMBIENCE.rain = rain;
+AMBIENCE.rainTone = rainTone;
+AMBIENCE.master = master;
+}
+if (typeof document !== "undefined") {
+document.addEventListener("pointerdown", startAmbience);
+document.addEventListener("keydown", startAmbience);
+}
+if (typeof draw === "function") {
+const _plate = draw;
+draw = function () {
+_plate();
+try {
+if (AMBIENCE.ready) {
+AMBIENCE.setGust(typeof gust !== "undefined" ? gust : 1);
+AMBIENCE.readLevel();
+if (typeof MUSIC !== "undefined" && MUSIC.ready) {
+MUSIC.setWorld(
+typeof gust !== "undefined" ? gust : 1,
+typeof storm !== "undefined" ? storm : 0
+);
+}
+}
+pWatchMusic();
+drawButterflies("body");
+drawCentreLine();
+drawCaption();
+drawInfo();
+if (!AMBIENCE.ready && !window.__GROKLY_FEED) pageHint(); // در گروکلی هیچ متنی روی اثر نمی‌آید
+} catch (e) {
+if (window.__abReport) window.__abReport("poem: " + e.message, String(e.stack || ""));
+}
+};
+if (typeof window !== "undefined") window.draw = draw;
+}
+if (typeof drawGrain === "function") {
+drawGrain = function () {};
+if (typeof window !== "undefined") window.drawGrain = drawGrain;
+}
+}
+
+</script>
+<script src="../_engine/viz-map.js"></script></body>
+</html>

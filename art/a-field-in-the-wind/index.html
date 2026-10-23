@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en"><head><script src="../_engine/grokly-feed.js"></script><script>if(!new URLSearchParams(location.search).get("h")){history.replaceState(null,"","?h=0x1ef7c2bb654ec7da7beb7f7a4a5ee4cb49f0d35aa7c846cdff291e32ffc20b18"+(location.search?"&"+location.search.slice(1):""));}</script>
+<script src="seed-shim.js"></script>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    
+    <title>A Field in the Wind — Music Visualizer · Reza Milani</title>
+    <script src="__p5.min.js"></script><script src="../_engine/viz-audio.js"></script><script src="fw-sound.js"></script>
+    <style>
+      html, body { margin: 0; padding: 0; background: #111; overflow: hidden; }
+      canvas { display: block; }
+    </style>
+  </head>
+  <body>
+    <main></main>
+    <script>
+      // a fixed hour, for looking: 27 August, ten in the evening
+      (function () {
+        const Real = Date;
+        const fixed = new Real(2026, 7, 27, 22, 0, 0).getTime();
+        function Fake(...a) {
+          if (!a.length) return new Real(fixed);
+          return new Real(...a);
+        }
+        Fake.prototype = Real.prototype;
+        Fake.now = () => fixed;
+        Fake.UTC = Real.UTC;
+        Fake.parse = Real.parse;
+        window.Date = Fake;
+      })();
+    </script>
+    <script>
+(function () {
+if (typeof window === "undefined") return;
+let shown = false;
+function report(title, detail) {
+if (shown) return;
+shown = true;
+try {
+const box = document.createElement("pre");
+box.style.cssText =
+"position:fixed;inset:0;z-index:99999;margin:0;padding:18px;" +
+"background:#080604;color:#ffb02e;font:11px/1.5 monospace;" +
+"white-space:pre-wrap;overflow:auto";
+box.textContent = "A FIELD IN THE WIND\nHALTED\n\n" + title + "\n\n" + detail;
+(document.body || document.documentElement).appendChild(box);
+} catch (e) {}
+}
+window.__wfReport = report;
+window.addEventListener("error", function (e) {
+report(
+String((e.error && e.error.message) || e.message || "error"),
+(e.filename || "?") + " line " + (e.lineno || "?") + "\n\n" +
+((e.error && e.error.stack) || "")
+);
+});
+window.addEventListener("unhandledrejection", function (e) {
+if (window.__wfDrawn) return;
+report("unhandled promise rejection", String((e.reason && e.reason.message) || e.reason));
+});
+let waited = 0;
+const watch = setInterval(function () {
+if (window.__wfDrawn) return clearInterval(watch);
+if (typeof window.createCanvas !== "function") return;
+waited += 500;
+if (waited < 6000) return;
+clearInterval(watch);
+report(
+"NO FRAME DRAWN AFTER 6 SECONDS",
+"setup reached: " + (window.__wfSetup ? "yes" : "NO") +
+"\ntokenData: " + (typeof tokenData === "undefined" ? "MISSING" : "ok")
+);
+}, 500);
+})();
+// Grokly: the seed comes from ?h= (Generate); Grokly's default seed keeps this original hash
+const WF_HASH = (function (o) { var q = new URLSearchParams(location.search).get("h") || ""; return /^0x[0-9a-f]{64}$/i.test(q) && q.toLowerCase() !== "0x6d696c616e69617274652d6772" + "0".repeat(38) ? q.toLowerCase() : o; })("0x0dec2d998abc3f2547032a47c639683139c7941cf369470e0e5b850874ab122b");
+if (typeof tokenData === "undefined") {
+window.tokenData = { hash: WF_HASH, tokenId: "0" };
+}
+// The 1e6-step warm-up of a hash is done once and its end state is kept: every later Random of the same hash
+// (the speck stream, the sound buffers) starts from the stored state instead of repeating the warm-up. Same numbers.
+const WF_PRNG_WARM = {};
+function wfSfc32(a, b, c, d) {
+const f = function () {
+a |= 0;
+b |= 0;
+c |= 0;
+d |= 0;
+let t = (((a + b) | 0) + d) | 0;
+d = (d + 1) | 0;
+a = b ^ (b >>> 9);
+b = (c + (c << 3)) | 0;
+c = (c << 21) | (c >>> 11);
+c = (c + t) | 0;
+return (t >>> 0) / 4294967296;
+};
+f.state = () => [a, b, c, d];
+return f;
+}
+class Random {
+constructor(hash) {
+this.hash = hash || tokenData.hash;
+this.reset();
+}
+reset() {
+this.useA = false;
+let st = WF_PRNG_WARM[this.hash];
+if (!st) {
+const seeded = (hex) => wfSfc32(parseInt(hex.substring(0, 8), 16), parseInt(hex.substring(8, 16), 16), parseInt(hex.substring(16, 24), 16), parseInt(hex.substring(24, 32), 16));
+const A = seeded(this.hash.substring(2, 34));
+const B = seeded(this.hash.substring(34, 66));
+for (let i = 0; i < 1e6; i += 2) {
+A();
+B();
+}
+st = WF_PRNG_WARM[this.hash] = [A.state(), B.state()];
+}
+this.prngA = wfSfc32(...st[0]);
+this.prngB = wfSfc32(...st[1]);
+}
+random_dec() {
+this.useA = !this.useA;
+return this.useA ? this.prngA() : this.prngB();
+}
+random_num(a, b) {
+return a + (b - a) * this.random_dec();
+}
+random_int(a, b) {
+return Math.floor(this.random_num(a, b + 1));
+}
+random_bool(p) {
+return this.random_dec() < p;
+}
+random_choice(list) {
+return list[this.random_int(0, list.length - 1)];
+}
+}
+let R;
+try {
+R = new Random(WF_HASH);
+} catch (e) {
+if (window.__wfReport) window.__wfReport("PRNG could not be seeded: " + e.message, WF_HASH);
+throw e;
+}
+const wfrnd = {
+dec: () => R.random_dec(),
+num: (a, b) => R.random_num(a, b),
+int: (a, b) => R.random_int(a, b),
+pick: (list) => R.random_choice(list),
+};
+function wfPostParams() {
+try {
+if (!tokenData || !tokenData.externalAssetDependencies) return {};
+const dep = tokenData.externalAssetDependencies[0];
+return dep && dep.data ? dep.data : {};
+} catch (e) {
+return {};
+}
+}
+const AB = {
+hash: WF_HASH,
+tokenId: tokenData.tokenId,
+params: wfPostParams(),
+param(name) {
+const v = this.params[name];
+return v === "" || v === undefined || v === null ? undefined : String(v);
+},
+number(name, fallback) {
+const v = this.param(name);
+const n = v === undefined ? NaN : parseFloat(v);
+return isFinite(n) ? n : fallback;
+},
+};
+const WF_GROUND = wfrnd.num(800, 2200);
+const WF_DENSITY = AB.number("density", wfrnd.num(0.72, 1.35));
+const WF_WIND = AB.number("wind", wfrnd.num(0.3, 1.2));
+const WF_BRANCHES = wfrnd.int(2, 4);
+const WF_TRUNK = wfrnd.num(50, 80);
+const WF_REACH = wfrnd.num(120, 150);
+const WF_EARS = Math.round(400 * WF_DENSITY);
+const WF_BUDGET = 3200;
+let wfSpent = 0;
+function wfr(a, b) {
+if (Array.isArray(a)) return wfrnd.pick(a);
+if (a === undefined) return wfrnd.dec();
+if (b === undefined) return wfrnd.num(0, a);
+return wfrnd.num(a, b);
+}
+const STORM = { period: 30, length: 7 };
+let windT = 0;
+function wfNow() {
+return new Date();
+}
+let storm = 0;
+let gust = 1;
+function updateWind() {
+windT = millis() / 1000;
+const phase = windT % STORM.period;
+storm = phase < STORM.length ? pow(sin(PI * (phase / STORM.length)), 1.7) : 0;
+gust = 0.25 + 0.75 * noise(windT * 0.22) + storm * 0.9;
+if (window.__fwTick) window.__fwTick(); // صدا: یک بار در هر فریم
+}
+let adip;
+let TREE = null;
+let MEADOW = null;
+let LEAVES = [];
+let leafGroups = null;
+let TREE_ROOT = 0;
+let STRAY = [];
+let recordingStray = false;
+function strayLine(x1, y1, x2, y2, col, w) {
+if (!recordingStray) {
+stroke(col);
+strokeWeight(w);
+line(x1, y1, x2, y2);
+return;
+}
+const t = drawingContext.getTransform();
+const d = pixelDensity();
+const at = (x, y) => [
+(t.a * x + t.c * y + t.e) / d,
+(t.b * x + t.d * y + t.f) / d,
+];
+const scale = Math.sqrt(Math.abs(t.a * t.d - t.b * t.c)) / d;
+const p1 = at(x1, y1);
+const p2 = at(x2, y2);
+STRAY.push({ p1, p2, col, w: w * scale });
+}
+let BLADES = [[], [], []];
+let EARS = [];
+const WF_FRAME = { x0: 600, x1: 1220, y0: -100, y1: 520 };
+let POPPIES = null;
+function setup() {
+window.__wfSetup = true;
+createCanvas(800, 800);
+rectMode(CENTER);
+pixelDensity(1);
+randomSeed(wfrnd.num(0, 1e9));
+noiseSeed(wfrnd.num(0, 1e9));
+const cnv = (typeof canvas !== "undefined" && canvas) || document.querySelector("canvas");
+const sizeCanvas = () => {
+if (!cnv) return;
+const smallerEdge = Math.min(window.innerHeight, window.innerWidth);
+cnv.style.width = smallerEdge + "px";
+cnv.style.height = smallerEdge + "px";
+};
+sizeCanvas();
+window.addEventListener("resize", sizeCanvas);
+if (cnv && cnv.parentElement) {
+const parent = cnv.parentElement;
+parent.style.height = "100vh";
+parent.style.width = "100vw";
+parent.style.display = "flex";
+parent.style.justifyContent = "center";
+parent.style.alignItems = "center";
+}
+// The heavy start (meadow, tree, meadow strokes, speck sheets) used to run here in one go and froze the page for
+// ~0.5-1 s. It now runs as a resumable job in short slices (wfBuild below), with the canvas hidden until it is done,
+// so a host that waits for a visible canvas starts stepping only on the finished picture. The drawing calls and the
+// order of random numbers are exactly the original ones, so the picture is unchanged.
+wfCanvasEl = cnv;
+wfMainCtx = drawingContext;
+if (cnv) cnv.style.display = "none";
+noStroke();
+wfBuildJob = wfBuild();
+// on its own page the draw loop pauses until the build is done (loop() below), so p5 never resets the matrix mid-build;
+// in Grokly it keeps running, because frames are stepped by the host and must never be skipped
+if (!window.__GROKLY_FEED) noLoop();
+wfScheduleBuild();
+frameRate(30);
+}
+const WF_SLICE_MS = 24;
+let wfCanvasEl = null;
+let wfBuildJob = null;
+let wfBuilt = false;
+// a real clock: the Grokly feed freezes performance.now and Date.now, and the piece fixes new Date(); the original
+// Date constructor (still the prototype's constructor) reads the wall clock. Used only to size the slices.
+const wfRealNow = (function () {
+const D = Date.prototype.constructor;
+return () => new D().getTime();
+})();
+function* wfBuild() {
+buildStars();
+adip = WF_GROUND;
+yield* sowMeadow();
+yield* paintTree();
+yield* paintMeadow();
+seeds = [];
+for (let i = 0; i < SEED_COUNT; i++) seeds.push(makeSeed(true));
+for (const layer of BLADES) {
+bladeBuckets(layer);
+yield;
+}
+leafBuckets();
+yield;
+yield* sizeSpeck();
+for (let i = 0; i < SPECK_FIELDS; i++) yield* castOneSheet();
+}
+// runs the build for up to `budget` ms
+function wfRunBuild(budget) {
+if (wfBuilt || !wfBuildJob) return;
+if (wfTreeRec) wfUseCtx(wfTreeRec.proxy);
+const end = wfRealNow() + budget;
+let done = false;
+for (;;) {
+if (wfBuildJob.next().done) {
+done = true;
+break;
+}
+if (wfRealNow() >= end) break;
+}
+if (done) {
+wfBuilt = true;
+wfBuildJob = null;
+if (wfCanvasEl) wfCanvasEl.style.display = "";
+if (!window.__GROKLY_FEED) loop();
+} else if (wfTreeRec) wfUseCtx(wfMainCtx);
+}
+// The tree is drawn under deeply nested push()/rotate(). If Chrome flushes the canvas in the middle of that (it does at
+// the end of a task), it re-applies the matrix at a slightly different float precision and the tree's pixels change.
+// So the recursion (the slow, JavaScript part) runs in slices against a recording context, and the recorded canvas
+// calls are then replayed on the real canvas in one go: the real canvas receives exactly the original call sequence.
+// The recorder forwards matrix/state calls to a small scratch context, so getTransform() (used by strayLine) returns the
+// very same values the real context would.
+let wfMainCtx = null;
+let wfTreeRec = null;
+const WF_REC_DRAW = new Set(["beginPath", "closePath", "moveTo", "lineTo", "bezierCurveTo", "quadraticCurveTo", "arc", "arcTo", "ellipse", "rect", "stroke", "fill", "fillRect", "strokeRect", "clearRect", "fillText", "strokeText", "drawImage", "putImageData"]);
+function wfUseCtx(c) {
+_renderer.drawingContext = c;
+window.drawingContext = c;
+}
+function wfTreeRecorder(main) {
+const scratch = document.createElement("canvas").getContext("2d");
+for (const k of ["lineWidth", "lineCap", "lineJoin", "miterLimit", "strokeStyle", "fillStyle", "globalAlpha", "globalCompositeOperation"]) scratch[k] = main[k];
+scratch.setTransform(main.getTransform());
+const ops = [];
+const fns = {};
+const proxy = new Proxy(scratch, {
+get(t, k) {
+const v = t[k];
+if (typeof v !== "function") return v;
+if (!fns[k]) {
+const draws = WF_REC_DRAW.has(k);
+const reads = k === "getTransform" || k === "isPointInPath" || k === "isPointInStroke" || k === "measureText" || k === "getLineDash";
+fns[k] = function (...args) {
+if (!reads) ops.push([0, k, args]);
+return draws ? undefined : t[k](...args);
+};
+}
+return fns[k];
+},
+set(t, k, v) {
+ops.push([1, k, v]);
+t[k] = v;
+return true;
+},
+});
+return { proxy, ops };
+}
+function wfReplay(main, ops) {
+for (const op of ops) {
+if (op[0]) main[op[1]] = op[2];
+else main[op[1]](...op[2]);
+}
+}
+// slices run as separate tasks through a MessageChannel (real tasks: the Grokly feed runs zero-delay timers back to
+// back in one task, which would put the whole build in one long task again)
+function wfScheduleBuild() {
+if (wfBuilt) return;
+const ch = new MessageChannel();
+ch.port1.onmessage = () => {
+wfRunBuild(WF_SLICE_MS);
+if (!wfBuilt) ch.port2.postMessage(0);
+else ch.port1.close();
+};
+ch.port2.postMessage(0);
+}
+function sowBlade(hMin, hMax, wMin, wMax, aMin, aMax) {
+const h = wfr(hMin, hMax);
+const bend = wfr(10, 380) * WF_WIND;
+return {
+x: wfr(-300, width + 300),
+h,
+bend,
+w: wfr(wMin, wMax),
+a: wfr(aMin, aMax),
+off: Math.round(wfr(0, 40)),
+phase: wfr(0, TWO_PI),
+give: 0.45 + (abs(h) / 560) * 0.85,
+};
+}
+function* sowMeadow() {
+const n = Math.round(5200 * WF_DENSITY);
+BLADES = [[], [], []];
+for (let i = 0; i < n; i++) {
+BLADES[0].push(sowBlade(-15, 560, 0.2, 11.5, 0, 125));
+if (i % 400 === 399) yield;
+}
+for (let i = 0; i < n; i++) {
+BLADES[1].push(sowBlade(15, 560, 0.2, 4.5, 0, 250));
+if (i % 400 === 399) yield;
+}
+for (let i = 0; i < n; i++) {
+BLADES[2].push(sowBlade(-15, 460, 0.2, 11.5, 0, 255));
+if (i % 400 === 399) yield;
+}
+EARS = [];
+for (let i = 0; i < WF_EARS; i++) {
+if (i % 100 === 99) yield;
+const grains = floor(wfr(6, 14));
+const seeds = [];
+for (let g = 0; g < grains; g++) {
+seeds.push({
+side: wfr([-1, 1]),
+off: wfr(2, 6),
+w: wfr(2, 5),
+h: wfr(3, 7),
+a: wfr(0, 150),
+});
+}
+EARS.push({
+x: wfr(0, width),
+y: height + wfr(20, 80),
+h: wfr(40, 160),
+lean: wfr(-20, 20),
+wind: wfr(0.5, 1.5),
+phase: wfr(0, TWO_PI),
+tipA: wfr(0, 150),
+seeds,
+});
+}
+POPPIES = null;
+}
+function wfBuildPoppies() {
+const W = WF_FRAME.x1 - WF_FRAME.x0;
+const H = WF_FRAME.y1 - WF_FRAME.y0;
+const layout = [
+{ x: 0.30, y: 0.42, s: 1.00, blur: 0 },
+{ x: 0.41, y: 0.63, s: 0.74, blur: 0 },
+{ x: 0.66, y: 0.34, s: 0.62, blur: 3.0 },
+{ x: 0.80, y: 0.56, s: 0.45, blur: 4.2 },
+{ x: 0.19, y: 0.72, s: 0.55, blur: 2.4 },
+];
+if (window.__FWP && __FWP.custom) { layout.length = 0; for (const q of __FWP.poppies) layout.push(q); } // Generate: تعداد و جای شقایق‌ها
+const margin = 0.08;
+POPPIES = layout.map((p) => {
+const fx = constrain(p.x + wfr(-0.02, 0.02), margin, 1 - margin);
+const fy = constrain(p.y + wfr(-0.025, 0.025), margin, 1 - margin);
+const px = WF_FRAME.x0 + fx * W;
+const py = WF_FRAME.y0 + fy * H;
+const baseY = WF_FRAME.y1 + 140;
+const r = 46 * p.s * wfr(0.92, 1.08);
+const wind = wfr(0.5, 1.2);
+const base = wfr(228, 255);
+const flower = {
+headX: px, headY: py, baseY,
+baseX: px + wfr(-1, 1) * r * 0.9 * wind,
+r,
+tilt: wfr(-0.22, 0.22),
+swing: r * wfr(1.6, 3.4) * wind,
+cr: constrain(base + wfr(0, 6), 0, 255),
+cg: constrain(base + wfr(-2, 2), 0, 255),
+cb: constrain(base + wfr(-6, 0), 0, 255),
+xo: wfr(0, 1000), yo: wfr(0, 1000),
+phase: wfr(0, TWO_PI), give: wfr(0.75, 1.35),
+};
+const bladeCount = floor(wfr(2, 5));
+const blades = [];
+for (let k = 0; k < bladeCount; k++) {
+const bx = px + wfr(-1, 1) * 130 * p.s;
+const bh = (baseY - py) * wfr(0.55, 1.05);
+blades.push({
+x: bx, baseY, h: bh,
+w: wfr(1.2, 3.4),
+swing: bh * wfr(0.12, 0.34) * wind,
+phase: wfr(0, TWO_PI), give: wfr(0.7, 1.4),
+});
+}
+return { flower, blades, blur: p.blur };
+});
+}
+function* paintTree() {
+clear();
+STRAY = [];
+recordingStray = true;
+wfTreeRec = wfTreeRecorder(wfMainCtx);
+wfUseCtx(wfTreeRec.proxy);
+push();
+scale(0.3);
+const original_size = wfr(80, 90);
+translate(adip, 2750);
+const vector = get_direction(0.5);
+wfSpent = 0;
+stroke(0, 200);
+strokeWeight(WF_TRUNK);
+line(0, 0, 0, -original_size);
+translate(0, -original_size);
+yield* multiple_branch(WF_REACH, vector.x, vector.y, WF_TRUNK, WF_BRANCHES);
+yield;
+pop();
+recordingStray = false;
+const ops = wfTreeRec.ops;
+wfTreeRec = null;
+wfUseCtx(wfMainCtx);
+yield;
+wfReplay(wfMainCtx, ops);
+TREE = get();
+TREE_ROOT = 2750 * 0.3;
+clear();
+yield;
+}
+function* paintMeadow() {
+clear();
+push();
+strokeCap(PROJECT);
+noFill();
+let k = 0;
+for (const m of STRAY) {
+if (++k % 250 === 0) yield;
+if (red(m.col) > 200) continue;
+stroke(m.col);
+strokeWeight(m.w);
+line(m.p1[0], m.p1[1], m.p2[0], m.p2[1]);
+}
+pop();
+yield;
+MEADOW = get();
+yield;
+LEAVES = [];
+k = 0;
+for (const m of STRAY) {
+if (++k % 500 === 0) yield;
+if (red(m.col) <= 200) continue;
+LEAVES.push({
+x1: m.p1[0],
+y1: m.p1[1],
+x2: m.p2[0],
+y2: m.p2[1],
+w: m.w,
+a: alpha(m.col),
+off: wfrnd.int(10, 40),
+});
+}
+clear();
+}
+function leafBuckets() {
+if (leafGroups) return leafGroups;
+const map = new Map();
+for (const l of LEAVES) {
+const w = Math.max(0.4, Math.round(l.w / 0.9) * 0.9);
+const a = Math.max(12, Math.round(l.a / 26) * 26);
+const key = w + ":" + a;
+let bucket = map.get(key);
+if (!bucket) {
+bucket = { w, a, list: [] };
+map.set(key, bucket);
+}
+bucket.list.push(l);
+}
+leafGroups = Array.from(map.values());
+return leafGroups;
+}
+function drawLeaves() {
+if (!LEAVES.length) return;
+const ctx = drawingContext;
+ctx.lineCap = "square";
+for (const bucket of leafBuckets()) {
+ctx.strokeStyle = "rgba(255,255,255," + bucket.a / 255 + ")";
+ctx.lineWidth = bucket.w;
+ctx.beginPath();
+for (const l of bucket.list) {
+ctx.moveTo(l.x1, l.y1);
+ctx.lineTo(l.x2, l.y2);
+}
+ctx.stroke();
+}
+}
+function draw() {
+// not built yet: in Grokly (frames stepped by the host) the rest is finished now, so a frame never depends on how far
+// the background build got; on its own page the frames simply wait for it
+if (!wfBuilt) {
+if (window.__GROKLY_FEED) wfRunBuild(Infinity);
+else return;
+}
+window.__wfDrawn = true;
+try {
+background(wfHourSky());
+updateWind();
+drawStars();
+drawMoon();
+drawSpeck();
+noStroke();
+fill(0, 50);
+rectMode(CORNER);
+rect(0, 0, width, height);
+rectMode(CENTER);
+swayTree();
+if (MEADOW) image(MEADOW, 0, 0, width, height);
+drawLeaves();
+if (window.__GROKLY_FEED) wfFieldCached(); // در گروکلی: علفزار، خوشه‌ها و شقایق‌ها هر دو فریم یک بار کشیده می‌شوند
+else {
+push();
+scale(0.3 * 4.3);
+translate(-600, 100);
+const groundY = height + 200;
+for (const layer of BLADES) drawLayer(layer, groundY);
+drawWheatField();
+pop();
+wfDrawPoppies();
+}
+driftSeeds();
+if (AMBIENCE.ready) AMBIENCE.setGust(min(gust, 1.8));
+else if (!window.__GROKLY_FEED) soundHint(); // در گروکلی هیچ متنی روی اثر نمی‌آید
+} catch (e) {
+noLoop();
+if (window.__wfReport) window.__wfReport("draw: " + e.message, String(e.stack || ""));
+}
+}
+const TREE_BAND = 8;
+function swayTree() {
+if (!TREE) return;
+const lean =
+gust * (0.55 + 0.35 * sin(windT * 1.15) + 0.2 * sin(windT * 2.7 + 1.3)) * (1 + storm * 1.6);
+const bend = lean * 24;
+const root = TREE_ROOT;
+for (let y = 0; y < root; y += TREE_BAND) {
+const h = min(TREE_BAND, root - y);
+const up = (root - y) / root;
+const dx = bend * pow(up, 1.9) + sin(windT * 3.1 + up * 5) * lean * 3.2 * pow(up, 2.4);
+image(TREE, dx, y, width, h, 0, y, width, h);
+}
+}
+// Grokly: the three blade layers, the wheat and the poppies are traced into a transparent layer every 2nd frame (15 times a second) and
+// that layer is laid on the canvas every frame: the field sways the same, at half the work. It depends only on the frame
+// number, so one seed always gives the same frames.
+let wfFieldCv = null, wfFieldN = 0;
+function wfFieldCached() {
+const main = drawingContext, cv = main.canvas;
+if (!wfFieldCv || wfFieldCv.width !== cv.width || wfFieldCv.height !== cv.height) { wfFieldCv = document.createElement("canvas"); wfFieldCv.width = cv.width; wfFieldCv.height = cv.height; wfFieldN = 0; }
+if (wfFieldN++ % 2 === 0) {
+const o = wfFieldCv.getContext("2d");
+o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, cv.width, cv.height); o.setTransform(main.getTransform());
+const r = _renderer; r.drawingContext = o; window.drawingContext = o;
+try { push(); scale(0.3 * 4.3); translate(-600, 100); const groundY = height + 200; for (const layer of BLADES) drawLayer(layer, groundY); drawWheatField(); pop(); wfDrawPoppies(); }
+finally { r.drawingContext = main; window.drawingContext = main; }
+}
+main.save(); main.setTransform(1, 0, 0, 1, 0, 0); main.drawImage(wfFieldCv, 0, 0); main.restore();
+main.lineCap = "butt"; // as drawLayer left it before
+}
+function bladeLean(b) {
+const wave = sin(windT * 1.35 - b.x * 0.0045 + b.phase);
+const flutter = noise(b.phase, windT * 0.75) - 0.5;
+return (gust + (window.__FW ? __FW.g : 0)) * b.give * (0.72 + 0.5 * wave + 0.75 * flutter * (0.35 + storm));
+}
+let grassTone = 255;
+let grassNight = true;
+let grassAt = -1;
+function wfGrassTone() {
+const now = wfNow();
+const minute = now.getHours() * 60 + now.getMinutes();
+if (minute !== grassAt) {
+grassAt = minute;
+const h = now.getHours() + now.getMinutes() / 60;
+const sun = Math.cos(((h - 12) / 12) * Math.PI);
+grassNight = sun < 0;
+let tone = 10 + 245 * ((sun + 1) / 2);
+if (moonNow().altitude > 0) tone += 30;
+grassTone = Math.round(Math.min(255, tone));
+}
+return grassTone;
+}
+function bladeBuckets(layer) {
+if (layer.__buckets) return layer.__buckets;
+const map = new Map();
+for (const b of layer) {
+const w = Math.max(0.4, Math.round(b.w / 0.9) * 0.9);
+const a = Math.max(10, Math.round(b.a / 34) * 34);
+const off = Math.round(b.off / 4) * 4;
+const key = off + ":" + w + ":" + a;
+let bucket = map.get(key);
+if (!bucket) {
+bucket = { off, w, a, list: [] };
+map.set(key, bucket);
+}
+bucket.list.push(b);
+}
+layer.__buckets = Array.from(map.values());
+return layer.__buckets;
+}
+function drawLayer(layer, groundY) {
+const ctx = drawingContext;
+ctx.lineCap = "butt";
+ctx.fillStyle = "rgba(0,0,0,0)";
+const base = wfGrassTone();
+const __F = window.__FW || { h: [1, 1, 1], th: 1 }, __hk = __F.h[BLADES.indexOf(layer)] || 1; // قد هر لایه ← صدا
+// only blades that can reach the visible canvas are traced (same picture, far fewer curves: most blades start below the
+// bottom edge or stand outside the left/right edges of this zoomed-in view). A blade's curve stays inside the box between
+// its root (b.x, groundY) and its tip (b.x + bend, groundY - h), because its control points lie between them.
+const M = ctx.getTransform(), cw = ctx.canvas.width, ch = ctx.canvas.height;
+const vx0 = (0 - M.e) / M.a, vx1 = (cw - M.e) / M.a, vy1 = (ch - M.f) / M.d;
+for (const bucket of bladeBuckets(layer)) {
+const tone = Math.round(constrain(base + (grassNight ? bucket.off : -bucket.off), 2, 255));
+ctx.strokeStyle = "rgba(255,255,255," + bucket.a / 255 + ")";
+ctx.lineWidth = bucket.w * __F.th; // ضخامت ← بم
+ctx.beginPath();
+for (const b of bucket.list) {
+if (groundY - b.h * __hk > vy1 + bucket.w * __F.th + 2) continue; // too short to reach the bottom edge, whatever the wind
+const bend = b.bend * bladeLean(b);
+const h = b.h * __hk * (1 - abs(bend) * 0.00035);
+const pad = bucket.w * __F.th + 2;
+if (groundY - h > vy1 + pad || Math.max(b.x, b.x + bend) < vx0 - pad || Math.min(b.x, b.x + bend) > vx1 + pad) continue;
+ctx.moveTo(b.x, groundY);
+ctx.bezierCurveTo(
+b.x + bend * 0.2,
+groundY - h * 0.3,
+b.x + bend * 0.6,
+groundY - h * 0.7,
+b.x + bend,
+groundY - h
+);
+}
+ctx.stroke();
+}
+}
+function get_direction(probability = 0.1) {
+let random_int = wfr(0, 1);
+let left_probability = 1 - probability;
+let left = false;
+let right = false;
+if (random_int >= left_probability) {
+left = true;
+} else if (random_int <= probability) {
+left = true;
+} else {
+left = true;
+right = true;
+}
+return createVector(left, right);
+}
+function* draw_branch(theta, h, threshold, first_thickness_size, branch_positions) {
+if (wfSpent++ > WF_BUDGET) return;
+if (wfSpent % 24 === 0) yield;
+first_thickness_size *= wfr(0.6, 0.9);
+strokeWeight(first_thickness_size);
+push();
+rotate(-theta);
+strokeWeight(first_thickness_size);
+stroke(0);
+line(0, 0, 0, -h);
+translate(0, -h);
+fill(255, 30);
+noStroke();
+const thin = first_thickness_size / 3;
+let c1 = color(0, wfr(0, 250));
+strayLine(wfr(0, 3000), wfr(0, 3000), wfr(0, 1000), wfr(0, 3000), c1, first_thickness_size);
+let c2 = color(0, wfr(0, 250));
+strayLine(wfr(0, 3000), wfr(0, 3000), wfr(0, 1000), wfr(0, 3000), c2, first_thickness_size);
+strayLine(wfr(0, 3000), wfr(0, 3000), wfr(0, 1000), wfr(0, 3000), color(100), thin);
+let c4 = color(0, wfr(0, 250));
+strayLine(wfr(0, 3000), wfr(0, 3000), wfr(0, 1000), wfr(0, 3000), c4, thin);
+strayLine(wfr(0, 3000), wfr(0, 3000), wfr(0, 1000), wfr(0, 3000), color(160), thin);
+stroke(0);
+strokeWeight(thin);
+let vector = get_direction();
+let left = vector.x;
+let right = vector.y;
+yield* branch(h, left, right, threshold, first_thickness_size, branch_positions);
+pop();
+}
+function* branch(h, left, right, threshold = 6, first_thickness_size = 3, branch_positions = []) {
+let a = wfr(-30, 30);
+let theta = radians(a);
+h *= wfr(0.7, 1);
+let i = branch_positions.length;
+branch_positions[i] = createVector(
+branch_positions[i - 1].x + h * cos(theta),
+branch_positions[i - 1].y - h * sin(theta)
+);
+if (branch_positions[i].x > 0 && branch_positions[i].y > 0) {
+if (h > threshold) {
+if (right) {
+yield* draw_branch(theta, h, threshold, first_thickness_size, branch_positions);
+}
+if (left) {
+yield* draw_branch(-theta, h, threshold, first_thickness_size, branch_positions);
+}
+} else {
+push();
+strokeCap(PROJECT);
+strayLine(0, 0, wfr(0, 1000), wfr(0, 1000), color(0, 190), wfr(0.05, 0.07));
+strayLine(wfr(0, 500), wfr(0, 500), wfr(0, 500), wfr(0, 500), color(0), wfr(0.01, 0.03));
+strayLine(0, 0, wfr(0, 20), wfr(0, 50), color(255, wfr(100, 255)), wfr(0.5, 9));
+noStroke();
+translate(0, -h);
+pop();
+}
+}
+}
+function* multiple_branch(
+first_branch_size,
+left,
+right,
+first_thickness_size = wfr(100, 210),
+number_of_branches = wfr(3, 200)
+) {
+for (let i = 0; i <= number_of_branches; i++) {
+const original_size = 200;
+let branch_positions = [];
+branch_positions[0] = createVector(width / 2, height - original_size);
+yield* branch(
+first_branch_size,
+left,
+right,
+(threshold = wfr(10, 20)),
+(first_thickness_size = first_thickness_size),
+branch_positions
+);
+}
+}
+function wfFieldSway(x, phase, give) {
+const wave = sin(windT * 1.35 - x * 0.0045 + phase);
+const flutter = noise(phase, windT * 0.75) - 0.5;
+return (gust + (window.__FW ? __FW.pop : 0)) * give * (0.72 + 0.5 * wave + 0.75 * flutter * (0.35 + storm)); // شقایق‌ها ← آواز
+}
+function wfDrawFlower(g, sway) {
+const dx = g.swing * sway;
+const headX = g.headX + dx;
+const headY = g.headY + abs(dx) * 0.12;
+noFill();
+stroke(20, 190);
+strokeWeight(max(1.4, g.r * 0.09) * 0.8);
+beginShape();
+curveVertex(g.baseX, g.baseY);
+curveVertex(g.baseX, g.baseY);
+curveVertex(g.baseX + dx * 0.18, lerp(g.baseY, headY, 0.45));
+curveVertex(g.baseX + dx * 0.62, lerp(g.baseY, headY, 0.8));
+curveVertex(headX, headY);
+curveVertex(headX, headY);
+endShape();
+push();
+translate(headX, headY);
+rotate(g.tilt + sway * 0.22);
+const petalSway = sway * 0.16;
+noStroke();
+const amp = g.r * 0.55;
+fill(g.cr, g.cg, g.cb, 235);
+beginShape();
+for (let a = 0; a < TWO_PI; a += 0.12) {
+const xn = map(cos(a), -1, 1, 0, 3);
+const yn = map(sin(a), -1, 1, 0, 3);
+const dist = map(noise(g.xo + xn, g.yo + yn), 0, 1, -amp, amp) * (1 + petalSway * 0.3);
+const rr = g.r + dist + g.r * petalSway * sin(a * 3 + g.xo);
+vertex(rr * cos(a), rr * sin(a));
+}
+endShape(CLOSE);
+fill(0, 235);
+beginShape();
+for (let a = 0; a < TWO_PI; a += 0.12) {
+const xn = map(cos(a), -1, 1, 0, 3);
+const yn = map(sin(a), -1, 1, 0, 3);
+const dist = map(noise(g.xo + xn, g.yo + yn) * 2, 0, 1, -amp, amp);
+vertex((g.r * 0.3 + dist * 0.3) * cos(a), (g.r * 0.3 + dist * 0.3) * sin(a));
+}
+endShape(CLOSE);
+pop();
+}
+function wfDrawGrassBlade(b, sway) {
+const dx = b.swing * sway;
+noFill();
+stroke(255, 210);
+strokeCap(PROJECT);
+strokeWeight(b.w);
+beginShape();
+curveVertex(b.x, b.baseY);
+curveVertex(b.x, b.baseY);
+curveVertex(b.x + dx * 0.16, b.baseY - b.h * 0.35);
+curveVertex(b.x + dx * 0.58, b.baseY - b.h * 0.72);
+curveVertex(b.x + dx, b.baseY - b.h);
+curveVertex(b.x + dx, b.baseY - b.h);
+endShape();
+}
+let wfBlurOk = null;
+let wfPopCv = null, wfPopCv2 = null;
+// شقایقِ تار را روی یک بوم کمکی می‌کشد و فقط جعبهٔ دور آن را تار کرده روی بوم اصلی می‌گذارد (blur کل بوم ۸۰۰×۸۰۰ در هر فریم خیلی کند بود)
+function wfBlurSmall(p, ctx) {
+const cv = ctx.canvas;
+if (!wfPopCv || wfPopCv.width !== cv.width || wfPopCv.height !== cv.height) { wfPopCv = document.createElement("canvas"); wfPopCv.width = cv.width; wfPopCv.height = cv.height; }
+const o = wfPopCv.getContext("2d", { willReadFrequently: true }); // بوم نرم‌افزاری: کشیدن و تار کردن ناحیهٔ کوچک روی CPU ارزان است
+const fl = p.flower, sF = wfFieldSway(fl.headX, fl.phase, fl.give), sB = p.blades.map((b) => wfFieldSway(b.x, b.phase, b.give));
+const dx = fl.swing * sF, hx = fl.headX + dx, hy = fl.headY + abs(dx) * 0.12, R = fl.r * 3 + 12;
+let x0 = min(hx - R, fl.baseX - 20), x1 = max(hx + R, fl.baseX + 20), y0 = hy - R, y1 = fl.baseY + 20;
+p.blades.forEach((b, i) => { const bx = b.x + b.swing * sB[i]; x0 = min(x0, b.x - 20, bx - 20); x1 = max(x1, b.x + 20, bx + 20); y0 = min(y0, b.baseY - b.h - 20); y1 = max(y1, b.baseY + 20); });
+const m = ctx.getTransform(), pad = p.blur * 3 + 4;
+const xs = [m.a * x0 + m.c * y0 + m.e, m.a * x1 + m.c * y0 + m.e, m.a * x0 + m.c * y1 + m.e, m.a * x1 + m.c * y1 + m.e];
+const ys = [m.b * x0 + m.d * y0 + m.f, m.b * x1 + m.d * y0 + m.f, m.b * x0 + m.d * y1 + m.f, m.b * x1 + m.d * y1 + m.f];
+const bx = Math.max(0, Math.floor(Math.min(...xs) - pad)), by = Math.max(0, Math.floor(Math.min(...ys) - pad));
+const bw = Math.min(cv.width, Math.ceil(Math.max(...xs) + pad)) - bx, bh = Math.min(cv.height, Math.ceil(Math.max(...ys) + pad)) - by;
+if (bw <= 0 || bh <= 0) return true;
+// نیم‌وضوح: شقایق تار است، پس کشیدنش در نصف اندازه و تار کردن با نصف شعاع همان نما را می‌دهد و چند برابر ارزان‌تر است
+const H = 0.5, hw = Math.ceil(bw * H), hh = Math.ceil(bh * H);
+o.setTransform(1, 0, 0, 1, 0, 0); o.clearRect(0, 0, hw + 2, hh + 2); o.setTransform(m.a * H, m.b * H, m.c * H, m.d * H, (m.e - bx) * H, (m.f - by) * H);
+o.lineCap = ctx.lineCap; o.lineJoin = ctx.lineJoin;
+const r = _renderer, keep = r.drawingContext; r.drawingContext = o;
+try {
+p.blades.forEach((b, i) => wfDrawGrassBlade(b, sB[i]));
+wfDrawFlower(fl, sF);
+} finally { r.drawingContext = keep; }
+if (!wfPopCv2 || wfPopCv2.width < hw || wfPopCv2.height < hh) { wfPopCv2 = document.createElement("canvas"); wfPopCv2.width = Math.max(hw, wfPopCv2 ? wfPopCv2.width : 0); wfPopCv2.height = Math.max(hh, wfPopCv2 ? wfPopCv2.height : 0); }
+const o2 = wfPopCv2.getContext("2d", { willReadFrequently: true });
+o2.clearRect(0, 0, hw + 2, hh + 2); o2.filter = "blur(" + p.blur * H + "px)"; o2.drawImage(wfPopCv, 0, 0, hw, hh, 0, 0, hw, hh); o2.filter = "none";
+ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+ctx.drawImage(wfPopCv2, 0, 0, hw, hh, bx, by, hw / H, hh / H);
+ctx.restore();
+return true;
+}
+function wfDrawPoppies() {
+if (!POPPIES) wfBuildPoppies();
+const ctx = drawingContext;
+if (wfBlurOk === null) wfBlurOk = typeof ctx.filter === "string";
+push();
+scale(0.3 * 4.3);
+translate(-600, 100);
+for (const p of POPPIES) {
+const usesBlur = p.blur > 0 && wfBlurOk;
+if (usesBlur && window.__GROKLY_FEED && wfBlurSmall(p, ctx)) continue; // در گروکلی: همان شقایق تار، ولی فقط ناحیهٔ خودش تار می‌شود (نه کل بوم) — بسیار سریع‌تر، با همان نما
+if (usesBlur) {
+ctx.save();
+ctx.filter = "blur(" + p.blur + "px)";
+}
+for (const b of p.blades) wfDrawGrassBlade(b, wfFieldSway(b.x, b.phase, b.give));
+wfDrawFlower(p.flower, wfFieldSway(p.flower.headX, p.flower.phase, p.flower.give));
+if (usesBlur) ctx.restore();
+}
+pop();
+}
+function drawWheatField() {
+const ctx = drawingContext;
+for (const e of EARS) {
+const tipX = e.x + e.lean * e.wind + e.wind * 44 * (bladeLean(e) + (window.__FW ? __FW.wheat : 0) * sin(windT * 2.1 + e.phase)); // خوشه‌ها ← شروع ضرب
+const tipY = e.y - e.h * 3.5;
+for (let i = 0; i < e.seeds.length; i++) {
+const g = e.seeds[i];
+const t = i / e.seeds.length;
+const gx = lerp(e.x, tipX, t) + g.side * g.off * e.wind;
+const gy = lerp(e.y, tipY, t);
+ctx.fillStyle = "rgba(255,255,255," + g.a / 255 + ")";
+ctx.beginPath();
+ctx.ellipse(gx, gy, g.w / 2, g.h / 2, 0, 0, TWO_PI);
+ctx.fill();
+}
+ctx.fillStyle = "rgba(0,0,0," + e.tipA / 255 + ")";
+ctx.beginPath();
+ctx.ellipse(tipX, tipY, 1.5, 3, 0, 0, TWO_PI);
+ctx.fill();
+}
+}
+const DAY_STEPS = 10;
+let hourSky = null;
+let hourAt = -1;
+function wfHourSky() {
+const now = wfNow();
+const minute = now.getHours() * 60 + now.getMinutes();
+if (minute === hourAt && hourSky) return hourSky;
+hourAt = minute;
+const h = minute / 60;
+const sun = Math.cos(((h - 12) / 12) * Math.PI);
+const step = Math.round(Math.abs(sun) * DAY_STEPS) / DAY_STEPS;
+const k = step * (sun < 0 ? 0.62 : 0.2);
+const paper = color(255);
+const night = color(6, 10, 20);
+const noon = color(255, 250, 236);
+hourSky = lerpColor(paper, sun < 0 ? night : noon, k);
+return hourSky;
+}
+const MOON = {
+lat: 48.8566,
+lng: 2.3522,
+};
+const RAD = Math.PI / 180;
+const OBLIQ = 23.4397 * RAD;
+const J2000 = Date.UTC(2000, 0, 1, 12) / 86400000;
+function daysSinceJ2000(date) {
+return date.getTime() / 86400000 - J2000;
+}
+function rightAscension(l, b) {
+return Math.atan2(Math.sin(l) * Math.cos(OBLIQ) - Math.tan(b) * Math.sin(OBLIQ), Math.cos(l));
+}
+function declination(l, b) {
+return Math.asin(Math.sin(b) * Math.cos(OBLIQ) + Math.cos(b) * Math.sin(OBLIQ) * Math.sin(l));
+}
+function siderealTime(d, lw) {
+return RAD * (280.16 + 360.9856235 * d) - lw;
+}
+function sunCoords(d) {
+const M = RAD * (357.5291 + 0.98560028 * d);
+const C = RAD * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M));
+const P = RAD * 102.9372;
+const L = M + C + P + Math.PI;
+return { dec: declination(L, 0), ra: rightAscension(L, 0) };
+}
+function moonCoords(d) {
+const L = RAD * (218.316 + 13.176396 * d);
+const M = RAD * (134.963 + 13.064993 * d);
+const F = RAD * (93.272 + 13.229350 * d);
+const l = L + RAD * 6.289 * Math.sin(M);
+const b = RAD * 5.128 * Math.sin(F);
+const dt = 385001 - 20905 * Math.cos(M);
+return { ra: rightAscension(l, b), dec: declination(l, b), dist: dt };
+}
+function moonState(date) {
+const lw = RAD * -MOON.lng;
+const phi = RAD * MOON.lat;
+const d = daysSinceJ2000(date);
+const c = moonCoords(d);
+const H = siderealTime(d, lw) - c.ra;
+let alt = Math.asin(Math.sin(phi) * Math.sin(c.dec) + Math.cos(phi) * Math.cos(c.dec) * Math.cos(H));
+if (alt > -0.05) alt += (RAD * 0.017) / Math.tan(alt + (RAD * 10.26) / (alt / RAD + 5.1));
+const az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(phi) - Math.tan(c.dec) * Math.cos(phi));
+const sc = sunCoords(d);
+const sdist = 149598000;
+const elong = Math.acos(
+Math.sin(sc.dec) * Math.sin(c.dec) + Math.cos(sc.dec) * Math.cos(c.dec) * Math.cos(sc.ra - c.ra)
+);
+const inc = Math.atan2(sdist * Math.sin(elong), c.dist - sdist * Math.cos(elong));
+const angle = Math.atan2(
+Math.cos(sc.dec) * Math.sin(sc.ra - c.ra),
+Math.sin(sc.dec) * Math.cos(c.dec) - Math.cos(sc.dec) * Math.sin(c.dec) * Math.cos(sc.ra - c.ra)
+);
+return {
+altitude: alt / RAD,
+azimuth: az / RAD,
+distance: c.dist,
+illumination: (1 + Math.cos(inc)) / 2,
+phase: 0.5 + (0.5 * inc * (angle < 0 ? -1 : 1)) / Math.PI,
+};
+}
+function moonRiseSet(date) {
+const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+let rise = null;
+let set = null;
+let prev = moonState(day).altitude;
+for (let i = 1; i <= 144; i++) {
+const t = new Date(day.getTime() + i * 10 * 60000);
+const alt = moonState(t).altitude;
+if (prev < 0 && alt >= 0 && rise === null) rise = t;
+if (prev > 0 && alt <= 0 && set === null) set = t;
+prev = alt;
+}
+return { rise, set };
+}
+let moonNowState = null;
+let moonAt = -1;
+function moonNow() {
+const now = wfNow();
+const minute = Math.floor(now.getTime() / 60000);
+if (minute !== moonAt) {
+moonAt = minute;
+moonNowState = moonState(now);
+const rs = moonRiseSet(now);
+moonNowState.rise = rs.rise;
+moonNowState.set = rs.set;
+if (typeof window !== "undefined") window.__moon = moonNowState;
+}
+return moonNowState;
+}
+const HORIZON = 0.58;
+const STAR_COUNT = wfrnd.int(140, 320);
+let STARS = [];
+function buildStars() {
+STARS = [];
+for (let i = 0; i < STAR_COUNT; i++) {
+const y = wfrnd.num(0.02, HORIZON - 0.04);
+STARS.push({
+x: wfrnd.num(0, 1),
+y,
+r: wfrnd.num(0.5, 1.9) * (1.25 - y),
+a: wfrnd.num(70, 235) * (1.15 - y),
+tw: wfrnd.num(0.6, 2.4),
+ph: wfrnd.num(0, TWO_PI),
+});
+}
+}
+function drawStars() {
+if (!STARS.length) return;
+const now = wfNow();
+const h = now.getHours() + now.getMinutes() / 60;
+const night = constrain(-Math.cos(((h - 12) / 12) * Math.PI) / 0.72, 0, 1);
+if (night <= 0.02) return;
+const t = millis() / 1000;
+push();
+noStroke();
+for (const st of STARS) {
+const x = st.x * width;
+const y = st.y * height;
+const trem = 0.72 + 0.28 * Math.sin(t * st.tw + st.ph);
+fill(255, 253, 246, st.a * night * trem);
+circle(x, y, st.r * 2);
+if (st.r > 1.4) {
+fill(255, 253, 246, st.a * night * trem * 0.14);
+circle(x, y, st.r * 6);
+}
+}
+pop();
+}
+function drawMoon() {
+const m = moonNow();
+const __P = window.__FWP || {};
+if (m.altitude <= 0 && !__P.custom) return;
+let x = width * (0.5 + (m.azimuth / 90) * 0.62);
+const skyTop = 46;
+const horizonY = height * HORIZON;
+let y = horizonY - (min(m.altitude, 90) / 90) * (horizonY - skyTop);
+let r = 68;
+if (__P.custom) { x = width * __P.sunX; y = height * __P.sunY; r = __P.sunR; m.altitude = max(m.altitude, 12); } // Generate: جا و اندازهٔ خورشید
+if (x < -120 || x > width + 120) return;
+const low = constrain(m.altitude / 12, 0, 1);
+const sun = Math.cos(((wfNow().getHours() + wfNow().getMinutes() / 60 - 12) / 12) * Math.PI);
+const night = constrain(-sun / 0.85, 0, 1);
+const a = 235 * (0.35 + 0.65 * low) * (0.18 + 0.82 * night);
+push();
+noStroke();
+fill(255, 250, 235, a * 0.1);
+circle(x, y, r * 5.5);
+fill(255, 250, 235, a * 0.16);
+circle(x, y, r * 2.9);
+fill(255, 252, 240, a);
+circle(x, y, r * 2);
+pop();
+}
+const SPECK = { fps: 12, scale: 0.5 };
+let speckCanvas = null;
+let speckCtx = null;
+let speckImg = null;
+let speckBuf = null;
+let speckField = null;
+let speckW = 0;
+let speckH = 0;
+let speckAt = -1;
+const speckRnd = new Random(WF_HASH);
+const SR = () => speckRnd.random_dec();
+function* sizeSpeck() {
+speckW = Math.max(2, Math.round(width * SPECK.scale));
+speckH = Math.max(2, Math.round(height * SPECK.scale));
+if (!speckCanvas) {
+speckCanvas = document.createElement("canvas");
+speckCtx = speckCanvas.getContext("2d");
+}
+speckCanvas.width = speckW;
+speckCanvas.height = speckH;
+speckImg = speckCtx.createImageData(speckW, speckH);
+speckBuf = new Uint32Array(speckImg.data.buffer);
+speckField = new Float32Array(speckW * speckH);
+for (let y = 0; y < speckH; y++) {
+for (let x = 0; x < speckW; x++) speckField[y * speckW + x] = noise(x * 0.02, y * 0.02);
+if (y % 16 === 15) yield;
+}
+}
+function* castSpeck() {
+speckBuf.fill(0);
+for (let i = 0; i < 6; i++) {
+const thr = 0.975 - 0.006 * i;
+for (let y = 0; y < speckH; y += 2) {
+if (y % 40 === 38) yield;
+const row = y * speckW;
+const yA = y / 500;
+const yB = 0.3 + y / 900;
+for (let x = 1; x < speckW; x += 2) {
+const n = speckField[row + x];
+if (SR() > thr - n / 30) {
+const size = Math.max(0.03, (0.2 + yA - n / 10 + SR() * yB) * 0.17);
+const px = x + ((SR() * 4) | 0) - 2;
+const py = y + ((SR() * 6) | 0) - 3;
+if (px < 0 || px >= speckW || py < 0 || py >= speckH) continue;
+const a = Math.min(255, ((0.35 + SR() * 0.6) * Math.min(1, size) * 255) | 0);
+speckBuf[py * speckW + px] = SR() < 0.78 ? a << 24 : (a << 24) | 0x00ffffff;
+}
+}
+}
+}
+speckCtx.putImageData(speckImg, 0, 0);
+}
+const SPECK_FIELDS = 10;
+let speckSheets = [];
+function* castOneSheet() {
+yield* castSpeck();
+const sheet = document.createElement("canvas");
+sheet.width = speckW;
+sheet.height = speckH;
+sheet.getContext("2d").drawImage(speckCanvas, 0, 0);
+speckSheets.push(sheet);
+}
+// the sheets are all cast during the build; as before, the n-th frame cycles through only the first n sheets (up to 10)
+let speckShown = 0;
+function drawSpeck() {
+if (!speckCanvas || !speckSheets.length) return;
+if (speckShown < SPECK_FIELDS) speckShown++;
+const n = Math.min(speckShown, speckSheets.length);
+const tick = floor(windT * SPECK.fps);
+const sheet = speckSheets[((tick % n) + n) % n];
+drawingContext.drawImage(sheet, 0, 0, width, height);
+}
+const SEED_COUNT = wfrnd.int(16, 38);
+const SEED_CYCLE = 9;
+const SEED_DIR = wfrnd.dec() < 0.5 ? -1 : 1;
+let seeds = [];
+function makeSeed(spread) {
+const fromLeft = SEED_DIR >= 0;
+return {
+x: spread
+? wfrnd.num(-40, width + 40)
+: fromLeft
+? wfrnd.num(-70, -12)
+: wfrnd.num(width + 12, width + 70),
+y: wfrnd.num(height * 0.06, height * 0.98),
+r: wfrnd.num(0.8, 2.6),
+sp: wfrnd.num(0.35, 1.4),
+phase: wfrnd.num(0, TWO_PI),
+a: wfrnd.num(120, 255),
+};
+}
+function driftSeeds() {
+const breath = 0.5 - 0.5 * cos((TWO_PI * windT) / SEED_CYCLE);
+const target = round(SEED_COUNT * (0.15 + 0.85 * breath));
+if (seeds.length < target) seeds.push(makeSeed(false));
+const dt = min(deltaTime, 60) / 16.7;
+noStroke();
+for (let i = seeds.length - 1; i >= 0; i--) {
+const sd = seeds[i];
+const __F2 = window.__FW || {}; // دانه‌ها: سرعت ← وسعت طیف، بالا/پایین ← جهت نُت، درخشش ← هوای صدا
+sd.x += SEED_DIR * sd.sp * (0.5 + gust * 2.1 + 2.2 * (__F2.seed || 0)) * dt;
+sd.y += (sin(windT * 1.7 + sd.phase) * 0.5 + (gust - 0.6) * 0.25 - 0.9 * (__F2.lift || 0)) * dt;
+if (sd.x > width + 14 || sd.x < -14 || sd.y < -14 || sd.y > height + 14) {
+if (seeds.length > target) seeds.splice(i, 1);
+else seeds[i] = makeSeed(false);
+continue;
+}
+fill(255, min(255, sd.a * (0.55 + gust * 0.45 + 0.5 * (__F2.glow || 0))));
+circle(sd.x, sd.y, sd.r * 2);
+fill(255, sd.a * 0.18);
+circle(sd.x, sd.y, sd.r * 4.5);
+}
+}
+const AMBIENCE = {
+ready: false,
+ctx: null,
+windGain: null,
+leafGain: null,
+setGust(g) {
+if (!this.ctx) return;
+const t = this.ctx.currentTime;
+this.windGain.gain.setTargetAtTime(0.012 + g * 0.05, t, 0.5);
+this.leafGain.gain.setTargetAtTime(g * g * 0.028, t, 0.5);
+this.windFilter.frequency.setTargetAtTime(430 + g * 460, t, 0.7);
+},
+};
+function wfNoiseBuffer(ctx, seconds, brown) {
+const nr = new Random(WF_HASH);
+const buf = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate);
+const d = buf.getChannelData(0);
+let last = 0;
+for (let i = 0; i < d.length; i++) {
+const w = nr.random_dec() * 2 - 1;
+if (brown) {
+last = (last + 0.02 * w) / 1.02;
+d[i] = last * 3.2;
+} else {
+d[i] = w;
+}
+}
+return buf;
+}
+function wfNoiseSource(ctx, buf, node) {
+const src = ctx.createBufferSource();
+src.buffer = buf;
+src.loop = true;
+src.connect(node);
+src.start();
+return src;
+}
+function startAmbience() {
+if (AMBIENCE.ready) return;
+try {
+const AC = window.AudioContext || window.webkitAudioContext;
+if (!AC) return;
+const ctx = new AC();
+ctx.resume();
+const master = ctx.createGain();
+master.gain.value = 0;
+master.connect(ctx.destination);
+master.gain.setTargetAtTime(0.85, ctx.currentTime, 2.5);
+const white = wfNoiseBuffer(ctx, 1.5, false);
+const brown = wfNoiseBuffer(ctx, 1.5, true);
+const windFilter = ctx.createBiquadFilter();
+windFilter.type = "bandpass";
+windFilter.frequency.value = 620;
+windFilter.Q.value = 0.8;
+const windGain = ctx.createGain();
+windGain.gain.value = 0.012;
+windFilter.connect(windGain).connect(master);
+wfNoiseSource(ctx, white, windFilter);
+const bodyFilter = ctx.createBiquadFilter();
+bodyFilter.type = "lowpass";
+bodyFilter.frequency.value = 300;
+const bodyGain = ctx.createGain();
+bodyGain.gain.value = 0.1;
+bodyFilter.connect(bodyGain).connect(master);
+wfNoiseSource(ctx, brown, bodyFilter);
+const leafFilter = ctx.createBiquadFilter();
+leafFilter.type = "highpass";
+leafFilter.frequency.value = 3800;
+const leafGain = ctx.createGain();
+leafGain.gain.value = 0;
+leafFilter.connect(leafGain).connect(master);
+wfNoiseSource(ctx, white, leafFilter);
+AMBIENCE.ctx = ctx;
+AMBIENCE.windGain = windGain;
+AMBIENCE.leafGain = leafGain;
+AMBIENCE.windFilter = windFilter;
+AMBIENCE.ready = true;
+} catch (e) {}
+}
+if (typeof document !== "undefined") {
+document.addEventListener("pointerdown", startAmbience);
+document.addEventListener("keydown", startAmbience);
+}
+function soundHint() {
+push();
+noStroke();
+textFont("monospace");
+textAlign(CENTER, CENTER);
+textSize(10);
+fill(255, 120 + 50 * sin(millis() / 900));
+text("click to hear the wind", width / 2, height - 22);
+pop();
+}
+try {
+window.$features = {
+Meadow: WF_DENSITY < 0.93 ? "Thin" : WF_DENSITY < 1.14 ? "Standing" : "Deep",
+Wind: WF_WIND < 0.6 ? "Still" : WF_WIND < 0.9 ? "Rising" : "Bending",
+Trunk: WF_TRUNK < 60 ? "Slender" : WF_TRUNK < 70 ? "Even" : "Heavy",
+Drift: SEED_DIR > 0 ? "Eastward" : "Westward",
+Stand:
+WF_GROUND < 1150 ? "Near Edge" : WF_GROUND < 1550 ? "Off Centre" : WF_GROUND < 1900 ? "Centred" : "Far Side",
+};
+} catch (e) {
+if (window.__wfReport) window.__wfReport("features: " + e.message, String(e.stack || ""));
+}
+    </script>
+  
+
+<script src="../_engine/viz-map.js"></script></body></html>

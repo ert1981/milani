@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head><script src="../../_engine/grokly-feed.js"></script>
+    <script src="../../_engine/seed-shim.js"></script>
+    <meta charset="utf-8" />
+    <title>Sakura (source for Night River × Sakura)</title>
+    <script>
+      // seed from ?h= (passed by the parent piece); Math.random is already seeded by seed-shim.js
+      (function () {
+        var p = new URLSearchParams(window.location.search);
+        window.tokenData = { hash: p.get("h") || p.get("hash"), tokenId: p.get("tid") || "0" };
+        // Sakura's draw() adds a resize listener every frame; keep only the first few
+        // at most one extra draw on loud frames (viz-audio "speed"), so loud passages cost at most 2x
+        window.VIZ = { speed: 0.35 };
+        var add = window.addEventListener, n = 0;
+        window.addEventListener = function (t) { if (t === "resize" && ++n > 4) return; return add.apply(this, arguments); };
+      })();
+    </script>
+    <script src="p5.min.js"></script><script src="../../_engine/viz-audio.js"></script>
+    <script src="../../_engine/p5.sound.min.js"></script>
+    <script src="toxiclibs.min.js"></script>
+    <style>html,body{margin:0;padding:0;background:#000;overflow:hidden}main{width:100vw;height:100vh;display:flex;justify-content:center;align-items:center}canvas{display:block}</style>
+  </head>
+  <body>
+    <main></main>
+    <script src="sound-waves.js"></script><script src="sketch.js"></script>
+  <script src="../../_engine/viz-map.js"></script></body>
+</html>
