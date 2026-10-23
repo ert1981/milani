@@ -41,7 +41,7 @@
     gate4k: true,               // 4K export only with the "4k" perk, from the signed session
     fourKMinUsd: 49,            // display only: the service decides (perkThresholdsUsd in collections.json)
     // TODO(founder): the deployed verification service + its public key (`npm run keygen` in server/verify).
-    verifyUrl: '',              // '' ⇒ credits are off and everyone uses the free tier
+    verifyUrl: 'https://91-188-254-194.sslip.io',              // '' ⇒ credits are off and everyone uses the free tier
     verifyPublicKeyJwk: { kty: 'EC', crv: 'P-256', x: 'lwilFML3eDHoUijdVI3v643r92i5-THxHkfSRUgR7R0', y: 'yVdXAEjfSECsP3a_nIl8-ed7a-frPY0Vd6msicVuL70' }, // founder's public key (generated on his Mac, 2026-10-24); the private half stays on the verify host only
     exportTimeoutMs: 8000,      // budget for the network steps right before an export
     storageKey: 'grokly.pass.wallet',
