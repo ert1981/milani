@@ -28,7 +28,7 @@
         cache = { src: j.src, a0: j.a0, a1: j.a1, key: j.key, y: new Float32Array(d.buf), info: d.info };
         last.info = { ...d.info, ms: Math.round(performance.now() - j.t0) }; last.master = null;
         const S = H && H.S;
-        if (S && S.full === j.src && st.on && st.target === j.key) { const a = Math.floor(S.trim * H.SR), raw = S.full.subarray(a, a + H.MAXS * H.SR); H.setPcm(process(S.full, raw, a)); }
+        if (S && S.full === j.src && st.on && st.target === j.key) { const a = Math.floor(S.trim * H.SR), raw = S.full.subarray(a, a + Math.round((H.selLen ? H.selLen() : H.MAXS) * H.SR)); H.setPcm(process(S.full, raw, a)); }
       } else { console.warn('Grokly polish:', d.message); last.info = { failed: true }; }
       j.waiters.forEach((r) => r()); render();
     };
@@ -65,7 +65,7 @@
     clearTimeout(timer);
     timer = setTimeout(() => {
       const S = H && H.S; if (!S || !S.full || S.full === S.pcm) return; // the sample beat is never polished
-      const a = Math.floor(S.trim * H.SR), raw = S.full.subarray(a, a + H.MAXS * H.SR);
+      const a = Math.floor(S.trim * H.SR), raw = S.full.subarray(a, a + Math.round((H.selLen ? H.selLen() : H.MAXS) * H.SR));
       if (!st.on) { cancelJob(); last.info = null; H.setPcm(raw); render(); } else H.setPcm(process(S.full, raw, a));
     }, 350);
   }

@@ -104,11 +104,12 @@
   }
   // every subtitle line in file time → window lines + lines outside (same rule as the "Start at" slider)
   function place(all) {
-    const S = H.S, dur = Math.min(H.MAXS, S.full.length / H.SR - S.trim), inWin = (x) => x.end - S.trim > 0.2 && x.start - S.trim < dur - 0.2;
+    const S = H.S, dur = H.selLen ? H.selLen() : Math.min(H.MAXS, S.full.length / H.SR - S.trim), inWin = (x) => x.end - S.trim > 0.2 && x.start - S.trim < dur - 0.2;
     H.subsOut = all.filter((x) => !inWin(x));
     S.subs = all.filter(inWin).map((x) => ({ ...x, start: Math.max(0, x.start - S.trim), end: Math.min(dur, x.end - S.trim) })).sort((a, b) => a.start - b.start);
   }
   function trimBox() { // as setSound() does for a new file
+    if (H.fitTrim) { H.fitTrim(); H.trimWas = H.S.trim; return; } // trim handles: keep the selection inside the sound
     const S = H.S, dur = S.full.length / H.SR, box = document.getElementById('trimBox'), r = document.getElementById('trim');
     if (!box || !r) return; box.hidden = dur <= H.MAXS + 0.05;
     if (dur > H.MAXS) { r.max = Math.floor((dur - H.MAXS) * 10) / 10; r.step = 0.1; S.trim = Math.min(S.trim, +r.max); r.value = S.trim; } else S.trim = 0;
@@ -120,17 +121,17 @@
     const p = plan(S.full, H.SR, mode);
     if (!p.cuts.length) { ui.note.textContent = p.regs.length ? 'No long silences to trim with this setting.' : 'No speech found to keep, so nothing was trimmed.'; return; }
     const r = apply(S.full, H.SR, p), tw = H.trimWas;
-    const before = { cuts: p.cuts, trim: S.trim, trimWas: tw, subs: S.subs.map((x) => ({ ...x })), subsOut: H.subsOut.map((x) => ({ ...x })) };
+    const before = { cuts: p.cuts, trim: S.trim, trimEnd: S.trimEnd, trimWas: tw, subs: S.subs.map((x) => ({ ...x })), subsOut: H.subsOut.map((x) => ({ ...x })) };
     const all = [...H.subsOut, ...S.subs.map((x) => ({ ...x, start: x.start + tw, end: x.end + tw }))].map((x) => ({ ...x, start: r.map(x.start), end: r.map(x.end) })).filter((x) => x.end - x.start > 0.05);
     if (!hist) hist = { orig: S.full, steps: [] };
     hist.steps.push(before);
-    S.full = r.pcm; hist.cur = S.full; S.trim = Math.round(r.map(S.trim) * 10) / 10; trimBox(); place(all);
+    S.full = r.pcm; hist.cur = S.full; S.trim = Math.round(r.map(S.trim) * 10) / 10; if (S.trimEnd != null) S.trimEnd = Math.round(r.map(S.trimEnd) * 10) / 10; trimBox(); place(all);
     H.renderLines(); H.cut();
     ui.note.textContent = `Removed ${p.removed.toFixed(1)} s of silence (${p.cuts.length} place${p.cuts.length > 1 ? 's' : ''}). Subtitles moved with the sound.`;
     render();
   }
   function restore(step, full) {
-    const S = H.S; S.full = full; S.trim = step.trim; trimBox(); H.trimWas = step.trimWas; S.subs = step.subs; H.subsOut = step.subsOut;
+    const S = H.S; S.full = full; S.trim = step.trim; if ('trimEnd' in step) S.trimEnd = step.trimEnd; trimBox(); H.trimWas = step.trimWas; S.subs = step.subs; H.subsOut = step.subsOut;
     H.renderLines(); H.cut();
   }
   function back() {

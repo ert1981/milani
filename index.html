@@ -70,6 +70,15 @@ h3 { font: 600 13px/1.2 var(--body); margin: 4px 0 0; color: var(--soft); }
 .btn svg { width: 18px; height: 18px; }
 .sound { background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; min-width: 0; }
 .sound canvas { flex: 1; min-width: 0; height: 34px; width: 100%; }
+/* trim: two scissor handles on the waveform choose the part of the sound to use */
+.wv { position: relative; flex: 1; min-width: 0; height: 34px; } .wv canvas { display: block; }
+.th { position: absolute; top: -9px; bottom: -4px; width: 28px; margin-left: -14px; cursor: ew-resize; touch-action: none; outline: none; -webkit-user-select: none; user-select: none; }
+.th::before { content: ''; position: absolute; top: 9px; bottom: 0; left: 50%; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--ink); }
+.th span { position: absolute; top: 0; left: 50%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.18); transition: transform .12s; }
+.th span svg { width: 11px; height: 11px; } .th.end span svg { transform: scaleX(-1); }
+.th:hover span, .th.on span, .th:focus-visible span { transform: scale(1.15); } .th:focus-visible span { box-shadow: 0 0 0 3px var(--line); }
+.trimRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--soft); font-variant-numeric: tabular-nums; }
+.trimRow b { color: var(--ink); font-weight: 600; } .trimRow .btn svg { width: 12px; height: 12px; }
 .sound .name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46%; }
 .trim, .slider { display: grid; gap: 4px; font-size: 13px; color: var(--soft); }
 input[type=range] { width: 100%; accent-color: var(--teal); }
@@ -224,8 +233,8 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
           <button class="btn" id="upload"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 14V3M5 8l5-5 5 5M3 17h14"/></svg>Upload audio or video</button>
           <input type="file" id="file" accept="audio/*,video/*" class="vh" tabindex="-1" aria-hidden="true">
         </div>
-        <div class="sound"><span class="name" id="soundName">Sample beat</span><canvas id="wave"></canvas></div>
-        <div class="trim" id="trimBox" hidden><label for="trim">Start at <b id="trimVal">0:00</b> · videos use up to 5 minutes</label><input type="range" id="trim" min="0" max="0" step="0.5" value="0"></div>
+        <div class="sound"><span class="name" id="soundName">Sample beat</span><div class="wv"><canvas id="wave"></canvas><div class="th" id="trimA" role="slider" tabindex="0" aria-label="Start of the part to use" title="Drag to set the start" hidden><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg></span></div><div class="th end" id="trimB" role="slider" tabindex="0" aria-label="End of the part to use" title="Drag to set the end" hidden><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg></span></div></div></div>
+        <div class="trimRow" id="trimBox" hidden><span id="trimInfo"></span><button class="btn small" id="trimPlay" aria-label="Play the selected part"><svg viewBox="0 0 20 20" fill="currentColor"><path id="trimPlayIcon" d="M5 3l12 7-12 7z"/></svg>Play selection</button></div>
         <div class="note" id="xNote" hidden>X allows up to 2:20 without Premium.</div>
         <div class="err" id="soundErr" role="alert" hidden></div>
         <div id="audioC"></div><!-- Audio C: voice polish + trim silences, filled by audio/*.js -->
@@ -478,8 +487,8 @@ async function resample(buf, rate) {
 const MIN_S = 1, MAX_FILE_S = 15 * 60; // shortest sound we accept; longest file we decode (decoding is all in memory)
 let subsOut = []; // subtitle lines outside the 5-minute window, in file time, so moving "Start at" back restores them
 function setSound(full, name) {
-  stop(); S.full = full; S.name = name; S.trim = 0; trimWas = 0; subsOut = [];
-  const dur = full.length / SR, win = Math.min(MAXS, dur);
+  stop(); S.full = full; S.name = name; S.trim = 0; S.trimEnd = null; trimWas = 0; subsOut = []; userSound = true;
+  const dur = full.length / SR, win = Math.min(windowLen(), dur);
   // a new sound keeps the lines the user typed (clipped to the new length); only the sample lines are dropped
   S.subs = S.subs.filter((x) => !x.sample && x.start < win - 0.2).map((x) => ({ ...x, end: Math.min(win, x.end) }));
   S.subsSample = false; renderLines();
@@ -488,18 +497,57 @@ function setSound(full, name) {
   $('soundName').textContent = name; cut();
 }
 function updateXNote() { const len = S.pcm ? S.pcm.length / SR + (window.GroklyMusic && GroklyMusic.on && GroklyMusic.tailSamples ? GroklyMusic.tailSamples(SR) / SR : 0) : 0; $('xNote').hidden = len <= 140; }
-// the "Start at" window: up to 5 minutes, or in a free Music video the free length, so the user picks which part (e.g. the chorus)
+// the selection: up to 5 minutes, or without minutes the free length (both modes), so the user picks which part (e.g. the chorus)
 const freeCap = () => (window.GroklyPass && GroklyPass.maxSeconds && !(GroklyPass.hasCredits && GroklyPass.hasCredits()) ? GroklyPass.maxSeconds() : 0);
-function windowLen() { const c = freeCap(); return mvOn() && c ? Math.min(MAXS, c) : MAXS; }
-function updateTrimBox(reset) {
-  if (!S.full) return; const dur = S.full.length / SR, win = windowLen(); $('trimBox').hidden = dur <= win + 0.05;
-  if (dur > win) { $('trim').max = Math.floor((dur - win) * 10) / 10; $('trim').step = 0.1; if (reset) { $('trim').value = 0; $('trimVal').textContent = '0:00'; } else if (+$('trim').value > +$('trim').max) { $('trim').value = $('trim').max; } }
-  const lab = document.querySelector('#trimBox label'); if (lab) lab.lastChild.textContent = win < MAXS ? ` · the free video uses ${win} seconds from here` : ' · videos use up to 5 minutes';
+function windowLen() { const c = freeCap(); return c ? Math.min(MAXS, c) : MAXS; }
+// ---------- trim: two scissor handles on the waveform; the selected part is what is previewed, counted and exported ----------
+let userSound = false; // the sample beat has no handles
+const MIN_SEL = 1, fadeLen = (len) => Math.min(1.5, len * 0.2); // ~1.5 s fades, shorter for very short parts
+function selLen() { if (!S.full) return 0; const d = S.full.length / SR, e = S.trimEnd == null ? Math.min(d, S.trim + MAXS) : Math.min(d, S.trimEnd); return Math.max(0, e - S.trim); }
+// a cut edge fades: fade-in when the start was moved off 0:00, fade-out when the end is before the sound's end
+function selFades() { if (!userSound || !S.full) return { fin: 0, fout: 0 }; const len = selLen(), f = fadeLen(len), d = S.full.length / SR; return { fin: S.trim > 0.05 ? f : 0, fout: S.trim + len < d - 0.05 ? f : 0 }; }
+function applyFades(pcm, fin, fout) { if (!fin && !fout) return pcm; const out = pcm.slice(), L = out.length, ni = Math.min(L, Math.round(fin * SR)), no = Math.min(L, Math.round(fout * SR));
+  for (let i = 0; i < ni; i++) out[i] *= i / ni; for (let i = 0; i < no; i++) out[L - 1 - i] *= i / no; return out; }
+function fitTrim(reset) { if (!S.full) return false; const dur = S.full.length / SR, win = windowLen(), a0 = S.trim, b0 = S.trimEnd;
+  if (reset || S.trimEnd == null) { S.trim = Math.max(0, Math.min(S.trim || 0, dur - MIN_SEL)); S.trimEnd = Math.min(dur, S.trim + win); }
+  else { S.trim = Math.max(0, Math.min(S.trim, dur - MIN_SEL)); S.trimEnd = Math.max(S.trim + MIN_SEL, Math.min(S.trimEnd, dur, S.trim + win)); }
+  return S.trim !== a0 || S.trimEnd !== b0; }
+function updateTrimBox(reset) { if (!S.full || !userSound) return; const ch = fitTrim(reset); $('trimBox').hidden = false; showTrim(); if (ch && !reset) applyTrim(); }
+const fmtT1 = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`;
+function showTrim() {
+  const on = userSound && !!S.full; $('trimA').hidden = $('trimB').hidden = !on; if (!on) return;
+  const dur = S.full.length / SR, len = selLen(), e = S.trim + len, win = windowLen();
+  $('trimA').style.left = (S.trim / dur) * 100 + '%'; $('trimB').style.left = (e / dur) * 100 + '%';
+  $('trimA').setAttribute('aria-valuemin', 0); $('trimA').setAttribute('aria-valuemax', (e - MIN_SEL).toFixed(1)); $('trimA').setAttribute('aria-valuenow', S.trim.toFixed(1)); $('trimA').setAttribute('aria-valuetext', fmtT1(S.trim));
+  $('trimB').setAttribute('aria-valuemin', (S.trim + MIN_SEL).toFixed(1)); $('trimB').setAttribute('aria-valuemax', Math.min(dur, S.trim + win).toFixed(1)); $('trimB').setAttribute('aria-valuenow', e.toFixed(1)); $('trimB').setAttribute('aria-valuetext', fmtT1(e));
+  const i = $('trimInfo'), b = (t) => { const x = document.createElement('b'); x.textContent = t; return x; };
+  i.textContent = ''; i.append(b(fmtT1(S.trim)), ' – ', b(fmtT1(e)), ' · ', b(len.toFixed(1) + ' s'), dur > win + 0.05 ? ` · up to ${win < MAXS ? win + ' s free' : '5 minutes'}` : '');
 }
-function updateCapNote() { const c = freeCap(), len = S.pcm ? S.pcm.length / SR : 0; $('capNote').hidden = !(mvOn() && c && len > c + 0.5); $('capNote').textContent = `Free: the first ${c} s from “Start at”, with the watermark — mint an artwork for the full length.`; }
+// the selection changed: subtitle lines follow the sound (kept in file time), then the new part is cut
+function applyTrim() { stop(); const dur = selLen();
+  const all = [...subsOut, ...S.subs.map((x) => ({ ...x, start: x.start + trimWas, end: x.end + trimWas }))]; trimWas = S.trim;
+  const inWin = (x) => x.end - S.trim > 0.2 && x.start - S.trim < dur - 0.2;
+  subsOut = all.filter((x) => !inWin(x)); S.subs = all.filter(inWin).map((x) => ({ ...x, start: Math.max(0, x.start - S.trim), end: Math.min(dur, x.end - S.trim) })).sort((a, b) => a.start - b.start); renderLines(); cut(); }
+function trimHandle(el, isEnd) {
+  const set = (t) => { const dur = S.full.length / SR, win = windowLen(); t = Math.round(t * 10) / 10;
+    // the dragged edge goes where it is pulled; the other edge follows when the part gets shorter than 1 s or longer than the limit
+    if (isEnd) { S.trimEnd = Math.max(MIN_SEL, Math.min(dur, t)); S.trim = Math.max(0, S.trimEnd - win, Math.min(S.trim, S.trimEnd - MIN_SEL)); }
+    else { S.trim = Math.max(0, Math.min(dur - MIN_SEL, t)); S.trimEnd = Math.min(dur, S.trim + win, Math.max(S.trimEnd, S.trim + MIN_SEL)); } drawWave(); };
+  let drag = false, was = null;
+  el.addEventListener('pointerdown', (e) => { if (!S.full || !userSound) return; e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch {} drag = true; was = [S.trim, S.trimEnd]; stop(); el.classList.add('on'); el.focus({ preventScroll: true }); });
+  el.addEventListener('pointermove', (e) => { if (!drag) return; const r = $('wave').getBoundingClientRect(); set(((e.clientX - r.left) / r.width) * (S.full.length / SR)); });
+  const end = () => { if (!drag) return; drag = false; el.classList.remove('on'); if (S.trim !== was[0] || S.trimEnd !== was[1]) applyTrim(); };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+  el.addEventListener('keydown', (e) => { const d = { ArrowLeft: -0.1, ArrowDown: -0.1, ArrowRight: 0.1, ArrowUp: 0.1, PageDown: -5, PageUp: 5 }[e.key]; if (d === undefined || !userSound) return; e.preventDefault(); stop();
+    set((isEnd ? S.trimEnd : S.trim) + d * (e.shiftKey ? 10 : 1)); clearTimeout(el._t); el._t = setTimeout(applyTrim, 400); });
+  el.addEventListener('click', (e) => e.stopPropagation());
+}
+trimHandle($('trimA'), false); trimHandle($('trimB'), true);
+$('trimPlay').onclick = () => { if (src) return stop(); pausedAt = 0; $('play').click(); };
+function updateCapNote() { const c = freeCap(), len = S.pcm ? S.pcm.length / SR : 0; $('capNote').hidden = !(mvOn() && c && len > c + 0.5); $('capNote').textContent = `Free: the first ${c} s of your selection, with the watermark — mint an artwork for the full length.`; }
 function fadeOutEnd(pcm, sec) { const out = pcm.slice(), n = Math.min(out.length, Math.round(sec * SR)); for (let i = 0; i < n; i++) out[out.length - n + i] *= 0.5 + 0.5 * Math.cos((Math.PI * (i + 1)) / n); return out; }
 function cut() {
-  const a = Math.floor(S.trim * SR); S.pcm = S.full.subarray(a, a + MAXS * SR); updateXNote(); // X: 2:20 without Premium (the music adds its fade-out tail)
+  const a = Math.floor(S.trim * SR); S.pcm = S.full.subarray(a, a + Math.round(selLen() * SR)); // the selected part (≤ 5 min / free length) updateXNote(); // X: 2:20 without Premium (the music adds its fade-out tail)
   const raw = S.pcm; if (window.GroklyPolish) S.pcm = GroklyPolish.process(S.full, raw, a); // Audio C: polished window if ready (a Worker polishes in the background, then swaps it in), else raw
   S.feats = E.analyze(raw, FPS); // Audio C: the art follows the voice's shape from the raw window (features are level-independent), so a finished polish never re-analyses
   drawWave(); const m = $('meta'), b = document.createElement('bdi'); b.textContent = S.name; m.textContent = ''; m.append(b, ` · ${fmtT(S.pcm.length / SR)}`); pausedAt = Math.min(pausedAt, S.pcm.length / SR); drawPreview(0); updateCapNote();
@@ -514,11 +562,17 @@ function mediaLength(f) {
 const busySound = (on) => { $('upload').disabled = $('rec').disabled = $('make').disabled = on; };
 function drawWave() {
   const c = $('wave'), r = c.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1); c.width = Math.max(10, r.width * dpr); c.height = 34 * dpr;
-  const g = c.getContext('2d'), n = Math.floor(c.width / (4 * dpr)), step = Math.floor(S.pcm.length / n) || 1, col = getComputedStyle(document.body).color;
-  g.clearRect(0, 0, c.width, c.height); g.fillStyle = col; let mx = 1e-6; const v = [];
-  for (let i = 0; i < n; i++) { let m = 0; for (let k = i * step; k < (i + 1) * step && k < S.pcm.length; k += 16) m = Math.max(m, Math.abs(S.pcm[k])); v.push(m); mx = Math.max(mx, m); }
-  g.globalAlpha = .75; v.forEach((m, i) => { const h = Math.max(2 * dpr, (m / mx) * c.height); g.fillRect(i * 4 * dpr, (c.height - h) / 2, 2 * dpr, h); }); g.globalAlpha = 1;
+  const pcm = userSound ? S.full : S.pcm; // with the trim handles: the whole sound, the part outside the selection dimmed
+  const g = c.getContext('2d'), n = Math.floor(c.width / (4 * dpr)), step = Math.floor(pcm.length / n) || 1, col = getComputedStyle(document.body).color;
+  g.clearRect(0, 0, c.width, c.height); g.fillStyle = col;
+  if (!waveCache || waveCache.pcm !== pcm || waveCache.n !== n) { let mx = 1e-6; const v = [];
+    for (let i = 0; i < n; i++) { let m = 0; for (let k = i * step; k < (i + 1) * step && k < pcm.length; k += 16) m = Math.max(m, Math.abs(pcm[k])); v.push(m); mx = Math.max(mx, m); }
+    waveCache = { pcm, n, v, mx }; }
+  const { v, mx } = waveCache, d = pcm.length / SR, a = userSound ? (S.trim / d) * n : 0, b = userSound ? ((S.trim + selLen()) / d) * n : n;
+  v.forEach((m, i) => { const h = Math.max(2 * dpr, (m / mx) * c.height); g.globalAlpha = i + 0.5 >= a && i + 0.5 <= b ? .75 : .2; g.fillRect(i * 4 * dpr, (c.height - h) / 2, 2 * dpr, h); }); g.globalAlpha = 1;
+  showTrim();
 }
+let waveCache = null;
 const showErr = (m) => { $('soundErr').textContent = m; $('soundErr').hidden = !m; if (m) uiSound('error'); };
 // UI sounds (ui-sound.js): off by default; never while the microphone records or a video is being made
 const uiSound = (n) => { if (window.GroklyUISound && (!busy || n === 'done' || n === 'error')) GroklyUISound.play(n); }; // done / error mark the end of an export
@@ -540,13 +594,7 @@ $('file').onchange = async (e) => {
       : "Couldn't read the sound in that file. Try an MP3, M4A, WAV or a phone video."); }
   finally { busySound(false); }
 };
-$('trim').oninput = (e) => { S.trim = +e.target.value; $('trimVal').textContent = fmtT(S.trim); };
 let trimWas = 0;
-$('trim').onchange = () => { stop(); const dur = Math.min(MAXS, S.full.length / SR - S.trim);
-  // keep every line in file time; show the ones that fall inside the new window
-  const all = [...subsOut, ...S.subs.map((x) => ({ ...x, start: x.start + trimWas, end: x.end + trimWas }))]; trimWas = S.trim;
-  const inWin = (x) => x.end - S.trim > 0.2 && x.start - S.trim < dur - 0.2;
-  subsOut = all.filter((x) => !inWin(x)); S.subs = all.filter(inWin).map((x) => ({ ...x, start: Math.max(0, x.start - S.trim), end: Math.min(dur, x.end - S.trim) })).sort((a, b) => a.start - b.start); renderLines(); cut(); };
 let rec = null, recTimer = null;
 let recStarting = false, recDiscard = false;
 $('rec').onclick = async () => {
@@ -751,7 +799,7 @@ function mvRebuild(now) {
   if (now) go(); else mvTimer = setTimeout(go, 350); // taps in a row (artworks, cut style) make one new edit
 }
 function seekTo(sec) { const playing = !!src; if (playing) stop(); pausedAt = Math.max(0, Math.min(S.pcm.length / SR - 0.05, sec)); drawPreview(Math.round(pausedAt * FPS)); if (playing) $('play').click(); }
-$('wave').addEventListener('click', (ev) => { const r = $('wave').getBoundingClientRect(); seekTo(((ev.clientX - r.left) / r.width) * (S.pcm.length / SR)); });
+$('wave').addEventListener('click', (ev) => { const r = $('wave').getBoundingClientRect(), x = (ev.clientX - r.left) / r.width; if (!userSound) return seekTo(x * (S.pcm.length / SR)); const t = x * (S.full.length / SR) - S.trim; if (t >= 0 && t <= selLen()) seekTo(t); });
 $('wave').style.cursor = 'pointer'; $('wave').title = 'Click to play from here';
 $('mvShots').addEventListener('click', (ev) => { const d = ev.target.closest('[data-k]'); if (d && S.mvPlan) seekTo(S.mvPlan.shots[+d.dataset.k].start / FPS); });
 function renderShots() {
@@ -978,8 +1026,10 @@ let mvWarming = false, mvWarmId = 0, mvNoteSaved = '';
 function mvPlayNow() {
   const playFrom = pausedAt < S.pcm.length / SR - 0.2 ? pausedAt : 0; pausedAt = playFrom;
   ac = ac || new (window.AudioContext || window.webkitAudioContext)(); ac.resume();
-  const b = ac.createBuffer(1, S.pcm.length + (window.GroklyMusic ? GroklyMusic.tailSamples(SR) : 0), SR); b.getChannelData(0).set(S.pcm); src = ac.createBufferSource(); src.buffer = b; src.connect(ac.destination); // Background music: + fade-out tail
-  const me = src; t0 = ac.currentTime + .05 - playFrom; src.start(t0 + playFrom, playFrom); /* team A: resume at the paused position */ if (window.GroklyMusic) GroklyMusic.startPreview(ac, t0, S.pcm); /* Background music */ src.onended = () => { if (src && src !== me) return; if (src) { stop(); pausedAt = 0; } drawPreview(0); }; // only the node that ended
+  const b = ac.createBuffer(1, S.pcm.length + (window.GroklyMusic ? GroklyMusic.tailSamples(SR) : 0), SR); b.getChannelData(0).set(S.pcm); src = ac.createBufferSource(); src.buffer = b; // Background music: + fade-out tail
+  const fd = selFades(), L = S.pcm.length / SR, gn = fd.fin || fd.fout ? ac.createGain() : null; if (gn) { src.connect(gn); gn.connect(ac.destination); } else src.connect(ac.destination); // trim: the selection's fade-in / fade-out
+  const me = src; t0 = ac.currentTime + .05 - playFrom;
+  if (gn) { const gAt = (x) => Math.min(fd.fin ? Math.min(1, x / fd.fin) : 1, fd.fout ? Math.max(0, Math.min(1, (L - x) / fd.fout)) : 1); gn.gain.setValueAtTime(gAt(playFrom), t0 + playFrom); [fd.fin, L - fd.fout, L].filter((x) => x > playFrom).forEach((x) => gn.gain.linearRampToValueAtTime(gAt(x), t0 + x)); } src.start(t0 + playFrom, playFrom); /* team A: resume at the paused position */ if (window.GroklyMusic) GroklyMusic.startPreview(ac, t0, S.pcm); /* Background music */ src.onended = () => { if (src && src !== me) return; if (src) { stop(); pausedAt = 0; } drawPreview(0); }; // only the node that ended
   $('playIcon').setAttribute('d', 'M5 3h4v14H5zM11 3h4v14h-4z'); $('play').setAttribute('aria-label', 'Pause preview');
   const loop = () => { drawPreview(curFrame()); raf = requestAnimationFrame(loop); }; loop();
 };
@@ -1291,7 +1341,7 @@ $('cancelMake').onclick = $('pillCancel').onclick = () => { if (job) { job.cance
 const pillText = (t) => { $('pillText').textContent = t + (queue.length ? ` · ${queue.length} waiting` : ''); };
 $('make').onclick = () => {
   if (S.q > 1440 && !(window.GroklyPass && GroklyPass.allows4k())) { S.q = 1440; setSeg('quality', 'q', 1440); saveState(); } // Grokly Pass: 4K only for Touch of the Moment minters
-  const J = { snap: { ...S, subs: S.subs.map((x) => ({ ...x })), layout: JSON.parse(JSON.stringify(S.layout)), pic: { ...S.pic }, artSeeds: { ...S.artSeeds } }, q: S.q, kind: kindOf(S.style), art: picIsArt() && !mvOn() };
+  const J = { snap: { ...S, subs: S.subs.map((x) => ({ ...x })), layout: JSON.parse(JSON.stringify(S.layout)), pic: { ...S.pic }, artSeeds: { ...S.artSeeds } }, q: S.q, kind: kindOf(S.style), art: picIsArt() && !mvOn(), fades: selFades() };
   J.o = opts(J.q / 1080); J.o1080 = opts(1); J.o.layout = J.o1080.layout = J.snap.layout[layoutKey(J.snap)] || {}; // the layout as it was at the click
   J.rtCtx = new (window.AudioContext || window.webkitAudioContext)(); J.rtCtx.resume(); // must start inside the tap for Safari
   // Slow artworks: ask once, now, for a job that will wait in the queue; a queued job never stops to ask. Clips under 10 s never ask.
@@ -1337,6 +1387,7 @@ async function runJob(J) {
     await loadFonts(); if (my.cancelled) throw new Error(CANCELLED);
     // Background music: voice + music, rendered offline (same seed ⇒ same music), for every export way; the art follows the mix
     if (window.GroklyPolish && GroklyPolish.busy) { $('makeNote').textContent = 'Polishing your voice…'; await Promise.race([GroklyPolish.ready(), cancelled]); snap.pcm = S.pcm; } // Audio C: wait for a running polish (same features: they come from the raw sound)
+    if (J.fades) snap.pcm = applyFades(snap.pcm, J.fades.fin, J.fades.fout); // trim: the selected part starts with a fade-in and ends with a fade-out (before music, loudness and the free cap)
     if (window.GroklyMusic && GroklyMusic.on) { $('makeNote').textContent = 'Adding the music…'; snap.pcm = await Promise.race([GroklyMusic.mix(snap.pcm, SR, my), cancelled]); /* team A: Cancel stops the mix */ snap.feats = E.analyze(snap.pcm, FPS); if (my.cancelled) throw new Error(CANCELLED); }
     if (window.GroklyBeat && GroklyMusic.on) snap.feats = GroklyBeat.apply(snap.feats, FPS); // Audio C: exact beats from the music's note times
     if (snap.mode !== 'music' && window.GroklyPolish && GroklyPolish.on && S.pcm !== S.full) { $('makeNote').textContent = 'Setting the loudness…'; snap.pcm = await GroklyPolish.master(snap.pcm, SR, my); if (my.cancelled) throw new Error(CANCELLED); } // Audio C (worker, cancellable): loudness target + true-peak limit on the final sound
@@ -1448,7 +1499,7 @@ async function runJob(J) {
   if (coarse) $('layoutTip').textContent = 'Tip: tap an item on the preview to select it, then drag, pinch, or use its × and corner handle. Swipe anywhere else to scroll.';
   addEventListener('resize', () => S.pcm && drawWave());
   // Audio C: bridge for audio/*.js (voice polish, trim silences, who speaks); re-cutting applies the new sound everywhere
-  window.GroklyAudioHost = { S, SR, FPS, MAXS, stop, cut, renderLines, drawPreview, curFrame, setPcm(p) { S.pcm = p; drawWave(); drawPreview(curFrame()); }, get subsOut() { return subsOut; }, set subsOut(v) { subsOut = v; }, get trimWas() { return trimWas; }, set trimWas(v) { trimWas = v; } };
+  window.GroklyAudioHost = { S, SR, FPS, MAXS, stop, cut, selLen, fitTrim: () => { fitTrim(); showTrim(); }, renderLines, drawPreview, curFrame, setPcm(p) { S.pcm = p; drawWave(); drawPreview(curFrame()); }, get subsOut() { return subsOut; }, set subsOut(v) { subsOut = v; }, get trimWas() { return trimWas; }, set trimWas(v) { trimWas = v; } };
   if (window.GroklyPolish) { GroklyPolish.mount($('audioC'), GroklyAudioHost); GroklySilence.mount($('audioC'), GroklyAudioHost); GroklySpeakers.mount($('spkBox'), GroklyAudioHost); } // Audio C
   window.__grokly = { S, drawPreview, setupPreview, items: hitItems, ready: true, get busy() { return busy || queue.length > 0; } }; // busy: an export is running or waiting (the Make button stays enabled)
 })();
