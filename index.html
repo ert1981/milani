@@ -384,6 +384,7 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
 <script src="music/music3.js"></script><script src="music/bg-music.js"></script><!-- Background music -->
 <script src="audio/dsp.js"></script><script src="audio/voice-polish.js"></script><script src="audio/silence.js"></script><script src="audio/speakers.js"></script><script src="audio/beat-sync.js"></script><!-- Audio C -->
 <script>
+const SHARE_CAPTION = 'My sound, as a video 🎧 Made with Milani by @rezamilani\nhttps://ert1981.github.io/milani/';
 (() => {
 const wmText = () => 'Made with Milani'; // founder: the mark is always "Made with Milani"; by default the signature sits beside it
 let SIG = null; // the founder's signature path (brand/signature.svg), for the optional signature watermark
@@ -1305,7 +1306,7 @@ document.addEventListener('visibilitychange', () => { if (!busy) return; if (doc
 function toast(blob, fname) {
   const t = $('toast'); $('toastSave').href = lastURL; $('toastSave').download = fname; t.hidden = false;
   const file = new File([blob], fname, { type: blob.type }), canShare = navigator.canShare && navigator.canShare({ files: [file] });
-  $('toastShare').hidden = !canShare; $('toastShare').onclick = () => navigator.share({ files: [file] }).catch(() => {});
+  $('toastShare').hidden = !canShare; $('toastShare').onclick = () => navigator.share({ files: [file], text: SHARE_CAPTION }).catch(() => {});
   try { if (document.hidden && window.Notification && Notification.permission === 'granted') new Notification('Your Milani video is ready', { body: fname, silent: true }); } catch {}
 }
 $('toastClose').onclick = () => ($('toast').hidden = true);
@@ -1379,8 +1380,8 @@ async function runJob(J) {
     lastURL = URL.createObjectURL(blob);
     $('out').src = lastURL; $('save').href = lastURL; $('save').download = fname;
     const file = new File([blob], fname, { type: blob.type }), canShare = navigator.canShare && navigator.canShare({ files: [file] });
-    $('share').hidden = !canShare; $('share').onclick = () => navigator.share({ files: [file] }).catch(() => {});
-    $('postX').href = 'https://x.com/intent/post?text=' + encodeURIComponent('My sound, as a video 🎧 Made with Milani');
+    $('share').hidden = !canShare; $('share').onclick = () => navigator.share({ files: [file], text: SHARE_CAPTION }).catch(() => {});
+    $('postX').href = 'https://x.com/intent/post?text=' + encodeURIComponent(SHARE_CAPTION);
     const facts = `${(blob.size / 1048576).toFixed(1)} MB · ${W}×${H} · ${fmtT(snap.pcm.length / SR)}`;
     $('resNote').textContent = ext === 'mp4' ? `${facts} · ready for X, Instagram and TikTok. On X, attach the saved video to your post.`
       : `${facts} · This is a WebM video: it works on YouTube and most computers, but X, Instagram and TikTok need MP4. This browser couldn’t make MP4 here; another browser may be able to.`;
