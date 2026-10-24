@@ -41,7 +41,7 @@
     gate4k: true,               // 4K export only with the "4k" perk, from the signed session
     fourKMinUsd: 49,            // display only: the service decides (perkThresholdsUsd in collections.json)
     // TODO(founder): the deployed verification service + its public key (`npm run keygen` in server/verify).
-    verifyUrl: 'https://91-188-254-194.sslip.io',              // '' ⇒ credits are off and everyone uses the free tier
+    verifyUrl: 'https://91-188-254-194.sslip.io', // live verify service (founder's VPS, 2026-10-24); '' ⇒ credits off, free tier only
     verifyPublicKeyJwk: { kty: 'EC', crv: 'P-256', x: 'lwilFML3eDHoUijdVI3v643r92i5-THxHkfSRUgR7R0', y: 'yVdXAEjfSECsP3a_nIl8-ed7a-frPY0Vd6msicVuL70' }, // founder's public key (generated on his Mac, 2026-10-24); the private half stays on the verify host only
     exportTimeoutMs: 8000,      // budget for the network steps right before an export
     storageKey: 'grokly.pass.wallet',
@@ -292,10 +292,12 @@
       offline: 'The minutes service didn’t answer, so this video was made in the free version. Your minutes were not used.',
       signin: S.account && enabled() ? `Sign in with your wallet (Quality › ${PASS()}) to use your minutes.` : '',
       bad: 'Your minutes couldn’t be confirmed, so this video was made in the free version.' }[reason] || '';
-    const base = capped ? `Free videos use the first ${capped} seconds and carry the “${MARK()}” mark.` : '';
-    const pitch = !enabled() ? 'Longer videos and 4K for collectors of Reza Milani’s art are coming soon.'
-      : !S.sess || !(S.sess.claims.length || S.sess.grants.length) ? `Mint a Reza Milani artwork on Verse to get full-length minutes without the mark (Quality › ${PASS()}).` : '';
-    return [base, why, pitch].filter(Boolean).join(' ').trim();
+    // WEB-01A (service off) / WEB-01LA (service live, no minutes on this wallet). The upsell shows only on a capped export, when the sound was longer than the free cut.
+    const noMinutes = !S.sess || !(S.sess.claims.length || S.sess.grants.length);
+    const base = !capped ? '' : !enabled() ? `This is the first ${capped} seconds of your sound, with a small “${MARK()}” mark. Full-length videos, without the mark and in 4K, are coming for collectors of Reza Milani’s art.`
+      : noMinutes ? `This is the first ${capped} seconds, with a small “${MARK()}” mark. For the whole piece, up to ${CREDIT_MAX / 60} minutes and mark-free, mint a Reza Milani artwork on Verse (from $4.90) and sign in with your wallet.`
+      : `This is the first ${capped} seconds, with a small “${MARK()}” mark.`;
+    return [base, why].filter(Boolean).join(' ').trim();
   }
 
   // ---------------------------------------------------------------------------------------------
@@ -328,8 +330,10 @@
   const btn = (text, onclick, cls) => el('button', { type: 'button', className: 'btn small' + (cls ? ' ' + cls : ''), textContent: text, onclick });
   const link = (text, href) => el('a', { href, textContent: text, target: '_blank', rel: 'noopener' });
   const short = (a) => a.slice(0, 6) + '…' + a.slice(-4);
-  const RULE = 'Minutes go to the collector who minted the artwork, once per artwork.';
-  const FINE = 'To receive minutes, mint the artwork to your own wallet (connect it at checkout on Verse). Artworks minted to Verse’s default custodial wallet, or bought on the secondary market, don’t include minutes. Minutes are credited once per artwork, to the wallet that minted it. They are a tool benefit, not an investment.';
+  const RULE = 'Minutes go to the wallet that first minted an artwork, once per artwork. If you minted with another wallet, sign in with that one.'; // WEB-03C, second and third sentence
+  const FINE = 'To receive minutes, mint the artwork to your own wallet (connect it at checkout on Verse). Artworks minted to Verse’s default custodial wallet, or bought on the secondary market, don’t include minutes. Minutes are credited once per artwork, to the wallet that first minted it. They are a tool benefit, not an investment.';
+  // PK-D-A with the P1 values (Spring Set: 6 artworks, 55 minutes, $39.32; the service holds the same list under "sets" in collections.json).
+  const PACK_CARD = 'The Spring Set: Traveling with the Wind and the five lowest-priced works of The First Days of Spring (Blossoms Behind the River, Poppies in the Spring Wind, A Night Conversation of Tree and Wind, A Tree in the Distance, Spring Blossoms Along the Eastern Pond), for $39.32. Minted to your own wallet, with 55 minutes for full-length videos.';
   // Pricing copy (marketing, locked): tiers with links to the artworks on Verse + the required fine print.
   function tierList(open) {
     const d = el('details'), ul = el('ul');
@@ -339,7 +343,7 @@
       if (t.works.length > 1) { const sub = el('ul'); t.works.forEach(([n, id]) => sub.append(el('li', {}, [link(n, verseArt(id))]))); li.append(sub); }
       ul.append(li);
     });
-    d.append(ul, el('p', { textContent: `4K unlocks when the different artworks you minted add up to $${CONFIG.fourKMinUsd} (Touch of the Moment alone does it; several editions of one artwork count once).` }), el('p', { textContent: `Minutes never expire. Videos run up to ${CREDIT_MAX / 60} minutes each. Need more? Mint another artwork. Works for voice videos and music videos alike.` }), el('p', { textContent: FINE }));
+    d.append(ul, el('p', { textContent: PACK_CARD }), el('p', { textContent: `4K unlocks when the different artworks you minted add up to $${CONFIG.fourKMinUsd} (Touch of the Moment alone does it; several editions of one artwork count once), or when you complete the Spring Set.` }), el('p', { textContent: `Minutes never expire. Videos run up to ${CREDIT_MAX / 60} minutes each. Need more? Mint another artwork. Works for voice videos and music videos alike.` }), el('p', { textContent: FINE }));
     if (open) d.open = true;
     return d;
   }
@@ -350,10 +354,10 @@
     const msg = el('p', { className: 'gp-msg', role: 'status' }); msg.setAttribute('aria-live', 'polite');
     const lines = [], actions = el('div', { className: 'row' }); let state = 'off';
     const free = `Free: the first ${FREE_MAX} seconds of every video, with a small “${MARK()}” mark.`;
-    const pitch = `${free} Mint a Reza Milani artwork on Verse and get full-length, watermark-free minutes, credited once to the wallet that minted it.`;
-    if (!enabled()) {
-      lines.push(el('p', { textContent: `${free} Longer videos and 4K for collectors of Reza Milani’s art are coming soon.` }),
-        el('p', {}, [link('See his work on Verse', COLLECTION_URL)]));
+    const pitch = `${free} Mint a Reza Milani artwork on Verse to your own wallet and get minutes for full songs, whole podcasts and complete poems, up to ${CREDIT_MAX / 60} minutes each, without the mark. Minutes never expire.`; // WEB-03A
+    if (!enabled()) { // WEB-02A + WEB-02L + fine print
+      lines.push(el('p', { textContent: `${free} Soon: full songs, whole podcasts and complete poems, up to ${CREDIT_MAX / 60} minutes, no mark, and 4K, for collectors of Reza Milani’s art.` }),
+        el('p', {}, [link('See the artworks on Verse', COLLECTION_URL)]), el('p', { className: 'note', textContent: FINE }));
     } else if (!S.account) {
       lines.push(el('p', { textContent: pitch }), tierList());
       if (!hasWallet()) {
@@ -381,7 +385,7 @@
         else lines.push(el('p', { textContent: 'No artworks minted by this wallet were found. ' + RULE }), tierList());
         if (others.length) lines.push(el('p', { textContent: `${others.length} artwork(s) in this wallet were minted by someone else, so their minutes went to that collector.` }));
         if (S.sess.perks.includes('4k')) lines.push(el('p', { textContent: `4K export is unlocked (${usd(S.sess.usd)} of collected artworks).` }));
-        else if (GATE_4K) { lines.push(el('p', { className: 'gp-4k', textContent: `4K unlocks at ${usd(S.sess.need4k)} of collected artworks — you have ${usd(S.sess.usd)}.` })); if (src.length) lines.push(tierList()); }
+        else if (GATE_4K) { lines.push(el('p', { className: 'gp-4k', textContent: `4K opens when the different artworks you minted add up to ${usd(S.sess.need4k)}. You have ${usd(S.sess.usd)}. Touch of the Moment does it on its own, and so does completing the Spring Set.` })); if (src.length) lines.push(tierList()); }
         actions.append(btn('Refresh', () => refreshSession(CONFIG.exportTimeoutMs).then(emit)));
       }
       actions.append(btn('Disconnect', disconnect));
@@ -396,15 +400,18 @@
   // Footer line: honest while the minutes service is off; the bot line once it is on.
   function syncFooter() {
     const f = document.getElementById('footSoon'); if (!f) return;
-    if (enabled()) f.replaceChildren(txt('Coming soon: mention the bot under your video on X'));
-    else f.replaceChildren(txt('Longer videos and 4K for collectors: coming soon · '), link('Reza Milani on Verse', COLLECTION_URL));
+    if (enabled()) f.replaceChildren(txt('Mint an artwork, get minutes for full-length videos · '), link('Reza Milani on Verse', COLLECTION_URL)); // WEB-06LA
+    else f.replaceChildren(txt('Full-length, mark-free videos and 4K for collectors of Reza Milani’s art · '), link('His artworks on Verse', COLLECTION_URL)); // WEB-06A
   }
   // 4K (Quality picker #quality, data-q="2160") only with the "4k" perk. If 4K is selected without it, 2K is picked instead.
   // index.html re-checks allows4k() when “Make my video” is pressed (marked Grokly Pass hook).
   function syncQuality() {
     const b = document.querySelector('#quality [data-q="2160"]'); if (!b) return;
     const ok = allows4k(); b.disabled = !ok;
-    const why = ok ? '4K takes longer and some phones can’t make it.' : enabled() ? '4K is included with Touch of the Moment (Collector).' : '4K for collectors is coming soon.';
+    const have = S.sess && S.sess.usd != null ? ` You have ${usd(S.sess.usd)}.` : '';
+    const why = ok ? '4K takes longer and some phones can’t make it.' // WEB-04LA (+ the Spring Set rule) / WEB-04A
+      : enabled() ? `4K opens when the different artworks you minted add up to $${CONFIG.fourKMinUsd}.${have} Touch of the Moment does it on its own, and so does completing the Spring Set.`
+      : `4K is a collector’s finish. It will open when the different artworks you have minted add up to $${CONFIG.fourKMinUsd}.`;
     b.title = ok ? '' : why;
     // Visible reason (touch and keyboard users never see tooltips), linked to the button for screen readers.
     let n = document.getElementById('q4kNote');
