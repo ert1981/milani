@@ -108,15 +108,20 @@
     const c = await readToken(res.session, 'session', account);
     if (!c) throw new Error('the answer could not be checked');
     S.sess = { account, token: res.session, exp: c.exp, balance: Number(res.balance) || 0, claims: res.claims || [], grants: res.grants || [], perks: Array.isArray(c.perks) ? c.perks : [],
-      usd: Number(c.usd != null ? c.usd : res.collectedUsd) || 0, need4k: Number((res.perkThresholdsUsd || {})['4k']) || CONFIG.fourKMinUsd, at: Date.now() };
-    ls.set(sessKey(account), res.session);
+      usd: Number(c.usd != null ? c.usd : res.collectedUsd) || 0, need4k: Number((res.perkThresholdsUsd || {})['4k']) || CONFIG.fourKMinUsd, at: Date.now(), syncing: res.syncing === true };
+    ls.set(sessKey(account), res.session); watchSync();
   }
+  // The service is still reading recent mints (syncing: true): ask again in a while, until it has caught up.
+  let syncTimer = 0;
+  function watchSync() { clearTimeout(syncTimer); if (S.sess && S.sess.syncing) syncTimer = setTimeout(() => { if (S.sess && S.sess.syncing) refreshSession(CONFIG.exportTimeoutMs).then(emit); }, 45000); }
+  const DOWN_MSG = 'The minutes service can’t read the blockchain right now. Please try again in a minute. Free mode for now.';
+  const fail = (t) => { S.msg = t; S.badMsg = t; }; // an error text stays (and is shown prominently) until the next action replaces it
   const usedJti = new Set();
 
   // ---------------------------------------------------------------------------------------------
   // State
   // ---------------------------------------------------------------------------------------------
-  const S = { wallets: [], wallet: null, account: null, phase: 'idle', sess: null, msg: '', picking: false, signing: false };
+  const S = { wallets: [], wallet: null, account: null, phase: 'idle', sess: null, msg: '', badMsg: '', picking: false, signing: false };
   // phase: idle | connecting | restoring | ready | error
   const listeners = new Set();
   let lastCredits = false;
@@ -190,9 +195,10 @@
       S.account = null; setAccount(accs[0]);
     } catch (e) {
       S.phase = 'idle';
-      S.msg = e && e.code === 4001 ? 'Connection cancelled. You can try again any time.'
+      const m = e && e.code === 4001 ? 'Connection cancelled. You can try again any time.'
         : e && e.code === -32002 ? 'Your wallet already has a request open. Please check your wallet.'
         : 'Could not connect to your wallet. Please try again.';
+      if (e && e.code === 4001) S.msg = m; else fail(m);
       emit();
     }
   }
@@ -222,7 +228,8 @@
       if (S.account !== acct) return;
       await acceptSession(res, acct); S.phase = 'ready'; S.msg = '';
     } catch (e) {
-      S.msg = e && e.code === 4001 ? 'Sign-in cancelled. You can try again any time.' : 'Could not sign in right now (' + ((e && e.message) || 'error') + '). Free mode for now.';
+      if (e && e.code === 4001) S.msg = 'Sign-in cancelled. You can try again any time.';
+      else fail(e && e.status === 503 ? DOWN_MSG : 'Could not sign in right now (' + ((e && e.message) || 'error') + '). Free mode for now.');
     } finally { S.signing = false; emit(); }
   }
   // New session + fresh balance, without a signature (allowed for 24 h after signing). true if it worked.
@@ -232,8 +239,8 @@
     try { const res = await api('balance', { session: tok }, budgetMs); if (S.account !== acct) return false; await acceptSession(res, acct); return true; }
     catch (e) {
       if (S.account !== acct) return false;
-      if (e.status === 401) { S.sess = null; ls.set(sessKey(acct), null); S.msg = 'Please sign in again to use your collector credits.'; }
-      else S.msg = `Couldn’t reach the ${NAME()} minutes service right now. Free mode until it answers.`;
+      if (e.status === 401) { S.sess = null; ls.set(sessKey(acct), null); fail('Please sign in again to use your collector credits.'); }
+      else fail(e.status === 503 ? DOWN_MSG : `Couldn’t reach the ${NAME()} minutes service right now. Free mode until it answers.`);
       return false;
     }
   }
@@ -323,6 +330,7 @@
 .gp .gp-src { margin: 0; font-size: 13.5px; color: var(--ink, #222); }
 .gp .btn.gp-go { background: var(--teal, #00506a); border-color: var(--teal, #00506a); color: var(--teal-ink, #fff); }
 #quality [data-q="2160"]:disabled { opacity: .5; cursor: not-allowed; border-style: dashed; text-decoration: line-through; box-shadow: none; }
+.gp p.gp-err { color: var(--ink, #222); border-left: 3px solid var(--coral, #e2614f); padding: 4px 0 4px 10px; font-weight: 600; }
 .gp .btn:focus-visible, .gp summary:focus-visible { outline: 2px solid var(--teal, #00506a); outline-offset: 2px; }`;
   let box = null;
   const el = (tag, props, kids) => { const n = document.createElement(tag); Object.assign(n, props || {}); (kids || []).forEach((k) => k && n.append(k)); return n; };
@@ -386,13 +394,16 @@
         if (others.length) lines.push(el('p', { textContent: `${others.length} artwork(s) in this wallet were minted by someone else, so their minutes went to that collector.` }));
         if (S.sess.perks.includes('4k')) lines.push(el('p', { textContent: `4K export is unlocked (${usd(S.sess.usd)} of collected artworks).` }));
         else if (GATE_4K) { lines.push(el('p', { className: 'gp-4k', textContent: `4K opens when the different artworks you minted add up to ${usd(S.sess.need4k)}. You have ${usd(S.sess.usd)}. Touch of the Moment does it on its own, and so does completing the Spring Set.` })); if (src.length) lines.push(tierList()); }
-        actions.append(btn('Refresh', () => refreshSession(CONFIG.exportTimeoutMs).then(emit)));
+        if (S.sess.syncing) lines.push(el('p', { className: 'gp-sync', textContent: 'Checking recent mints… your minutes may update in a minute.' }));
+        actions.append(btn('Refresh', () => { S.msg = ''; refreshSession(CONFIG.exportTimeoutMs).then(emit); }));
       }
       actions.append(btn('Disconnect', disconnect));
     }
     msg.textContent = S.msg;
-    wrap.dataset.state = state;
-    wrap.append(head, ...lines); if (actions.childNodes.length) wrap.append(actions); wrap.append(msg);
+    const bad = !!S.msg && S.msg === S.badMsg; // errors: right under the title, with a coral bar, announced at once
+    if (bad) { msg.className = 'gp-msg gp-err'; msg.setAttribute('role', 'alert'); msg.removeAttribute('aria-live'); }
+    wrap.dataset.state = bad ? 'error' : state;
+    wrap.append(head, ...(bad ? [msg] : []), ...lines); if (actions.childNodes.length) wrap.append(actions); if (!bad) wrap.append(msg);
     const wasOpen = box.querySelector('details') && box.querySelector('details').open; const d = wrap.querySelector('details'); if (d && wasOpen) d.open = true;
     box.replaceChildren(wrap);
     syncCheckbox(false); syncQuality(); syncFooter();
