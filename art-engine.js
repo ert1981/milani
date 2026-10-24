@@ -175,12 +175,18 @@
     const RTL = /[\u0590-\u08FF\uFB1D-\uFDFF\uFE70-\uFEFF]/;
     // one movable item, as in engine.js: O.layout[id] = { x, y: offset as a fraction of W / H, s: scale around its centre, hide }
     let items = [];
+    const CTX_P = ['font', 'textAlign', 'textBaseline', 'direction', 'globalAlpha', 'fillStyle', 'strokeStyle', 'lineWidth', 'lineCap', 'lineJoin', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalCompositeOperation', 'filter', 'imageSmoothingEnabled'];
+    let copies = []; const flushCopies = () => { const q = copies; copies = []; q.forEach((d) => d()); };
     function item(id, box, fn) {
-      const o = (O.layout && O.layout[id]) || null; if (o && o.hide) return;
-      const dx = o && o.x ? o.x * W : 0, dy = o && o.y ? o.y * H : 0, k = o && o.s ? o.s : 1, cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
-      g.save(); if (dx || dy || k !== 1) { g.translate(cx + dx, cy + dy); if (k !== 1) g.scale(k, k); g.translate(-cx, -cy); } fn(); g.restore();
-      items.push({ id, x: cx + dx - (box[2] * k) / 2, y: cy + dy - (box[3] * k) / 2, w: box[2] * k, h: box[3] * k });
+      const L = O.layout || {}, one = (k, o, done) => { const dx = o && o.x ? o.x * W : 0, dy = o && o.y ? o.y * H : 0, k2 = o && o.s ? o.s : 1, cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
+        g.save(); if (done) done(); if (dx || dy || k2 !== 1) { g.translate(cx + dx, cy + dy); if (k2 !== 1) g.scale(k2, k2); g.translate(-cx, -cy); } fn(); g.restore();
+        items.push({ id: k, x: cx + dx - (box[2] * k2) / 2, y: cy + dy - (box[3] * k2) / 2, w: box[2] * k2, h: box[3] * k2 }); };
+      const o0 = L[id] || null; if (!(o0 && o0.hide)) one(id, o0);
+      // the user's copies ("<id>~<n>", made with its + control): drawn over everything at the end of the frame, with the canvas state of this moment
+      for (const k of Object.keys(L)) if (k.startsWith(id + '~') && L[k] && !L[k].hide) { const st = ctxState(); copies.push(() => one(k, L[k], () => ctxSet(st))); }
     }
+    function ctxState() { const s = { m: g.getTransform() }; for (const p of CTX_P) s[p] = g[p]; return s; }
+    function ctxSet(s) { g.setTransform(s.m); for (const p of CTX_P) g[p] = s[p]; }
     const hexA = (c, a) => { if (!/^#[0-9a-f]{6}$/i.test(c || '')) return `rgba(0,0,0,${a})`; const n = parseInt(c.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
     function overlay(f) {
       const u = Math.min(W, H) / 1080, ts = O.textScale || 1;
@@ -223,7 +229,7 @@
     api.drawFrame = function (f) { markN++; cv._wm = cv._wmRect = null;
       g.fillStyle = '#000'; g.fillRect(0, 0, W, H);
       if (pic && pic.width > 2) cover(pic, 1); // the picture keeps its size; only its own content moves with the sound
-      items = []; overlay(f); api.items = items;
+      items = []; copies = []; overlay(f); flushCopies(); api.items = items;
     };
     return api;
   }

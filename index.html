@@ -223,7 +223,7 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
         <button class="play" id="play" aria-label="Play preview"><svg viewBox="0 0 20 20"><path id="playIcon" d="M5 3l12 7-12 7z" fill="currentColor"/></svg></button>
       </div>
       <div class="meta" id="meta">Sample beat · press play to hear it</div>
-      <div class="layoutRow"><span class="note" id="layoutTip">Tip: tap anything on the preview to move, resize (corner) or hide it (×).</span><span class="vh" id="pvLive" aria-live="polite"></span><button class="btn small" id="resetLayout" hidden>Reset layout</button><span class="hiddenList" id="hiddenList" hidden></span></div>
+      <div class="layoutRow"><span class="note" id="layoutTip">Tip: tap anything on the preview to move, resize (corner), duplicate (+) or hide it (×).</span><span class="vh" id="pvLive" aria-live="polite"></span><button class="btn small" id="resetLayout" hidden>Reset layout</button><span class="hiddenList" id="hiddenList" hidden></span></div>
     </div>
 
     <div class="panel">
@@ -639,7 +639,7 @@ const TEXT_MIN = 4.5, MARK_MIN = 3; // text (titles are shrunk 3× on a phone, s
 function luminance(hex) { const n = parseInt(hex.slice(1), 16); return (0.2126 * (n >> 16) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255; }
 
 // ---------- subtitles drawn on top of every template ----------
-let subsBox = null; // where the subtitle block was last drawn (for dragging it)
+let subsBox = null, subsBoxes = []; // where the subtitle block (and each copy of it) was last drawn (for dragging it)
 const contrastOn = (bg, pref) => (pref && contrast(pref, bg) >= TEXT_MIN ? pref : contrast('#111111', bg) >= contrast('#ffffff', bg) ? '#111111' : '#ffffff');
 // the free watermark is drawn LAST, over the subtitles: the engines leave it in g.canvas._wm (opts.markLast) and its area in _wmRect
 function drawSubs(g, W, H, t, st = S) { try { drawSubsOnly(g, W, H, t, st); } finally { const m = g.canvas._wm; if (m) { g.canvas._wm = null; m(); } } }
@@ -650,8 +650,12 @@ function clearOfMark(cv, x, y, w, h, gap) {
   c.sort((a, b) => Math.hypot(a.x - x, a.y - y) - Math.hypot(b.x - x, b.y - y)); return c[0] || { x, y: Math.max(0, R[1] - gap - h) };
 }
 function drawSubsOnly(g, W, H, t, st = S) {
-  subsBox = null; let s = null; for (const x of st.subs) if (t >= x.start && t < x.end && x.text.trim() && (!s || x.start >= s.start)) s = x; if (!s) return; // overlapping lines: the newest one shows
-  const lo = (st.layout && st.layout[layoutKey(st)] && st.layout[layoutKey(st)].subs) || {}; if (lo.hide) return; // the user hid the subtitles
+  subsBox = null; subsBoxes = []; let s = null; for (const x of st.subs) if (t >= x.start && t < x.end && x.text.trim() && (!s || x.start >= s.start)) s = x; if (!s) return; // overlapping lines: the newest one shows
+  const LL = (st.layout && st.layout[layoutKey(st)]) || {}; // the subtitles and the user's copies of them ("subs~<n>"), each with its own offset / scale / hide
+  for (const id of ['subs', ...Object.keys(LL).filter((k) => k.startsWith('subs~'))]) { const lo = LL[id] || {}; if (!lo.hide) drawSubsOne(g, W, H, s, st, lo, id); }
+  subsBox = subsBoxes.find((b) => b.id === 'subs') || null;
+}
+function drawSubsOne(g, W, H, s, st, lo, id) {
   const u = Math.min(W, H) / 1080, size = 46 * u * st.subScale * (lo.s || 1), lh = size * 1.28, maxW = W * 0.84, fam = fontStack(st.subFont);
   g.save(); g.font = `700 ${size}px ${fam}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = RTL.test(s.text) ? 'rtl' : 'ltr';
   const lines = [];
@@ -674,8 +678,8 @@ function drawSubsOnly(g, W, H, t, st = S) {
   let txt = st.subColor, boxCol;
   if (!txt || txt === 'auto') { if (st.acc) { boxCol = st.acc + 'e6'; txt = contrastOn(st.acc, st.ink); } else if (st.ink) { txt = st.ink; boxCol = luminance(st.ink) < 0.4 ? 'rgba(255,255,255,.8)' : 'rgba(0,0,0,.62)'; } else txt = '#ffffff'; }
   boxCol = boxCol || (luminance(txt) < 0.4 ? 'rgba(255,255,255,.78)' : 'rgba(0,0,0,.62)'); /* dark text gets a light box */
-  subsBox = { x: cx - widest / 2 - size * .55, y: yy - size * .3, w: widest + size * 1.1, h: block + size * .6 };
-  if (st.subLook === 'box') { g.fillStyle = boxCol; g.beginPath(); g.roundRect(subsBox.x, subsBox.y, subsBox.w, subsBox.h, size * .35); g.fill(); }
+  const sb = { id, x: cx - widest / 2 - size * .55, y: yy - size * .3, w: widest + size * 1.1, h: block + size * .6 }; subsBoxes.push(sb);
+  if (st.subLook === 'box') { g.fillStyle = boxCol; g.beginPath(); g.roundRect(sb.x, sb.y, sb.w, sb.h, size * .35); g.fill(); }
   lines.forEach((l, i) => {
     const y = yy + lh * i + lh / 2;
     if (st.subLook === 'outline') { g.lineJoin = 'round'; g.lineWidth = size * .16; g.strokeStyle = luminance(txt) < 0.4 ? '#fff' : '#000'; g.strokeText(l, cx, y); }
@@ -876,8 +880,10 @@ function checkSubsOverPicture() {
 }
 const speakerAt = (t, st) => { if (!st.guest) return null; let s = null; for (const x of st.subs) if (t >= x.start && t < x.end && x.text.trim() && (!s || x.start >= s.start)) s = x; return s ? s.who || 'host' : null; };
 const ITEM_NAMES = { background: 'Background', frame: 'Frame', photo: 'Host photo', guest: 'Guest photo', title: 'Title', name: 'Name', wave: 'Sound wave', wave2: 'Bars', wave3: 'Shapes', chip: 'Badge', subs: 'Subtitles' };
+const baseId = (id) => String(id).split('~')[0], isCopy = (id) => String(id).includes('~');
+const itemName = (id) => (ITEM_NAMES[baseId(id)] || baseId(id)) + (isCopy(id) ? ' copy' : '');
 const SMIN = 0.3, SMAX = 3; // scale limits
-function hitItems() { const its = pv.e && pv.e.items ? [...pv.e.items] : []; if (subsBox) its.push({ id: 'subs', ...subsBox }); return its; }
+function hitItems() { const its = pv.e && pv.e.items ? [...pv.e.items] : []; for (const b of subsBoxes) its.push({ ...b }); return its; }
 function canvasPt(ev) { const r = pv.cv.getBoundingClientRect(); return { x: ((ev.clientX - r.left) * pv.cv.width) / r.width, y: ((ev.clientY - r.top) * pv.cv.height) / r.height }; }
 // every item can be touched in a box of at least 44 CSS px around it, even a tiny title; its × and corner handle sit outside that box
 const cssK = () => pv.cv.width / Math.max(1, pv.cv.getBoundingClientRect().width);
@@ -885,7 +891,7 @@ const tgt = (it) => { const m = 44 * cssK(), w = Math.max(it.w, m), h = Math.max
 function hitAt(p) { // among the items whose touch box holds the point: the one whose own box is nearest (inside = 0), then the smallest
   let best = null, bd = 0; for (const it of hitItems()) { const b = tgt(it); if (!(p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h)) continue;
     const d = Math.hypot(Math.max(it.x - p.x, 0, p.x - it.x - it.w), Math.max(it.y - p.y, 0, p.y - it.y - it.h));
-    if (!best || d < bd - 0.5 || (Math.abs(d - bd) <= 0.5 && it.w * it.h < best.w * best.h)) { best = it; bd = d; } }
+    if (!best || d < bd - 0.5 || (Math.abs(d - bd) <= 0.5 && it.w * it.h <= best.w * best.h)) { best = it; bd = d; } }
   return best; }
 // the × (delete) and the corner handle (scale) of the selected item, in canvas pixels; ≥ 24 CSS px (32 on touch screens)
 function controls(it) {
@@ -894,10 +900,14 @@ function controls(it) {
   // outside the item's touch box: in a column on its right, else its left (× on top, handle below), else in a row above / below it
   const col = (x) => { let a = cl(T.y + rad, rad, H - rad), b = cl(T.y + T.h - rad, rad, H - rad); if (b - a < sp) { b = Math.min(H - rad, a + sp); a = b - sp; } return [{ x, y: a }, { x, y: b }]; };
   const row = (y) => { let b = cl(T.x + T.w - rad, rad, W - rad), a = b - sp; if (a < rad) { a = rad; b = a + sp; } return [{ x: b, y }, { x: a, y }]; };
-  for (const [del, grip] of [col(T.x + T.w + rad + g), col(T.x - rad - g), row(T.y - rad - g), row(T.y + T.h + rad + g)]) if (inF(del) && inF(grip) && outT(del) && outT(grip)) return { rad, del, grip };
+  // + duplicate: in another free corner of the touch box (not on the × or the handle), else inside the item's top-left corner, else beside the ×
+  const withDup = (c) => { if (baseId(it.id) === 'background') return c; const free = (q) => inF(q) && Math.hypot(q.x - c.del.x, q.y - c.del.y) >= sp * 0.95 && Math.hypot(q.x - c.grip.x, q.y - c.grip.y) >= sp * 0.95, L = T.x - rad - g, R = T.x + T.w + rad + g, Tp = T.y - rad - g, B = T.y + T.h + rad + g;
+    const cand = [{ x: L, y: T.y + rad }, { x: R, y: T.y + rad }, { x: T.x + rad, y: Tp }, { x: T.x + T.w - rad, y: Tp }, { x: L, y: T.y + T.h - rad }, { x: R, y: T.y + T.h - rad }, { x: T.x + rad, y: B }, { x: T.x + T.w - rad, y: B }].map((q) => ({ x: cl(q.x, rad, W - rad), y: cl(q.y, rad, H - rad) }));
+    c.dup = cand.find((q) => outT(q) && free(q)) || [{ x: cl(it.x + rad, rad, W - rad), y: cl(it.y + rad, rad, H - rad) }, { x: c.del.x - sp, y: c.del.y }, { x: c.del.x + sp, y: c.del.y }, { x: c.del.x, y: c.del.y + sp }].map((q) => ({ x: cl(q.x, rad, W - rad), y: cl(q.y, rad, H - rad) })).find(free) || { x: cl(c.del.x - sp, rad, W - rad), y: c.del.y }; return c; };
+  for (const [del, grip] of [col(T.x + T.w + rad + g), col(T.x - rad - g), row(T.y - rad - g), row(T.y + T.h + rad + g)]) if (inF(del) && inF(grip) && outT(del) && outT(grip)) return withDup({ rad, del, grip });
   // full-frame items: inside the top-right corner
   let dy = cl(it.y + rad, rad, H - rad), gy = cl(it.y + it.h - rad, rad, H - rad); if (gy - dy < sp) { gy = cl(dy + sp, rad, H - rad); dy = gy - sp; }
-  return { rad, del: { x: cl(it.x + it.w - rad, rad, W - rad), y: dy }, grip: { x: cl(it.x + it.w - rad, rad, W - rad), y: gy } };
+  return withDup({ rad, del: { x: cl(it.x + it.w - rad, rad, W - rad), y: dy }, grip: { x: cl(it.x + it.w - rad, rad, W - rad), y: gy } });
 }
 function drawSel() {
   if (!sel || (busy && !BG_EXPORT)) return; const it = hitItems().find((x) => x.id === sel); if (!it) return;
@@ -911,6 +921,9 @@ function drawSel() {
   // ◢ scale handle
   g.fillStyle = '#00506a'; g.beginPath(); g.arc(c.grip.x, c.grip.y, c.rad * 0.8, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = c.rad * 0.13;
   g.beginPath(); g.moveTo(c.grip.x - q, c.grip.y + q * 0.2); g.lineTo(c.grip.x - q, c.grip.y + q); g.lineTo(c.grip.x - q * 0.2, c.grip.y + q); g.moveTo(c.grip.x + q, c.grip.y - q * 0.2); g.lineTo(c.grip.x + q, c.grip.y - q); g.lineTo(c.grip.x + q * 0.2, c.grip.y - q); g.moveTo(c.grip.x - q, c.grip.y + q); g.lineTo(c.grip.x + q, c.grip.y - q); g.stroke();
+  // + duplicate
+  if (c.dup) { g.fillStyle = '#2f7a55'; g.beginPath(); g.arc(c.dup.x, c.dup.y, c.rad * 0.8, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = c.rad * 0.16; g.lineCap = 'round';
+    const p2 = c.rad * 0.36; g.beginPath(); g.moveTo(c.dup.x - p2, c.dup.y); g.lineTo(c.dup.x + p2, c.dup.y); g.moveTo(c.dup.x, c.dup.y - p2); g.lineTo(c.dup.x, c.dup.y + p2); g.stroke(); }
   g.restore();
 }
 const near = (p, c, r) => Math.hypot(p.x - c.x, p.y - c.y) <= r;
@@ -927,25 +940,32 @@ function moveItem(id, nx, ny, box) { // box = the item's box at offset 0 (alread
   setL(id, { x: +((x - box.x) / W).toFixed(4), y: +((y - box.y) / H).toFixed(4) });
   if (drag) drag.guide = guide.x != null || guide.y != null ? guide : null;
 }
-function hideItem(id) { setL(id, { hide: true }); sel = null; pv.cv.style.touchAction = 'pan-y'; drag = null; saveState(); layoutChanged(); redrawLayout(); }
+// + : a copy of the item with its own id ("<id>~<n>"), its size, 16 px down-right (kept in the frame), drawn over its original and selected
+function duplicateItem(id) {
+  if (!id || baseId(id) === 'background' || !hitItems().some((x) => x.id === id)) return; const L = layoutOf(), b = baseId(id), o = L0(id), W = pv.cv.width, H = pv.cv.height, d = 16 * cssK();
+  const n = Math.max(1, ...Object.keys(L).filter((k) => k.startsWith(b + '~')).map((k) => +k.split('~')[1] || 1)) + 1, nid = `${b}~${n}`;
+  L[nid] = { c: 1, x: +((o.x || 0) + d / W).toFixed(4), y: +((o.y || 0) + d / H).toFixed(4), ...(o.s ? { s: o.s } : {}) };
+  drag = null; redrawLayout(); const base = baseOf(nid); if (base) clampItem(nid, base); sel = nid; pv.cv.style.touchAction = 'none'; saveState(); layoutChanged(); redrawLayout(); announce(`${itemName(nid)} added and selected`);
+}
+function hideItem(id) { if (isCopy(id)) delete layoutOf()[id]; else setL(id, { hide: true }); sel = null; pv.cv.style.touchAction = 'pan-y'; drag = null; saveState(); layoutChanged(); redrawLayout(); }
 const redrawLayout = () => { if (pv.e && pv.e.items !== undefined) drawPreview(src ? curFrame() : lastI); };
 pv.cv.tabIndex = 0; pv.cv.setAttribute('aria-roledescription', 'editable preview');
-pv.cv.setAttribute('aria-label', 'Preview. Press Enter to select an item, Tab to go to the next item, arrows to move, plus and minus to resize, Delete to hide, Escape to finish.');
+pv.cv.setAttribute('aria-label', 'Preview. Press Enter to select an item, Tab to go to the next item, arrows to move, plus and minus to resize, D to duplicate, Delete to hide, Escape to finish.');
 const coarse = matchMedia('(pointer: coarse)').matches;
-pv.cv.title = coarse ? 'Tap an item to select it, then drag, pinch or use its × and corner handle.' : 'Drag anything to move it. Select it to delete (×) or resize (corner handle). Arrow keys move, + and − resize, Delete hides.';
+const pvTitle = coarse ? 'Tap an item to select it, then drag, pinch or use its × (delete), + (duplicate) and corner handle.' : 'Drag anything to move it. Select it to delete (×), duplicate (+) or resize (corner handle). Arrow keys move, + and − resize, D duplicates, Delete hides.'; pv.cv.title = pvTitle;
 const announce = (t) => { $('pvLive').textContent = t; };
-const selectItem = (id) => { sel = id; pv.cv.style.touchAction = sel ? 'none' : 'pan-y'; if (id) announce(`${ITEM_NAMES[id] || id} selected`); redrawLayout(); };
+const selectItem = (id) => { sel = id; pv.cv.style.touchAction = sel ? 'none' : 'pan-y'; if (id) announce(`${itemName(id)} selected`); redrawLayout(); };
 // keep each item wholly inside the frame (the background: ~80 %), text within the frame margins, and text off the watermark
 const TEXT_IDS = ['title', 'name', 'subs', 'chip'];
 function clampItem(id, base) { // base = the item's box at offset 0 and scale 1
-  const L = layoutOf(), o = L[id]; if (!o || !base) return; const W = pv.cv.width, H = pv.cv.height, m = Math.min(W, H) * 0.04;
-  let k = o.s || 1; if (TEXT_IDS.includes(id)) k = Math.min(k, Math.max(SMIN, Math.min((W - 2 * m) / Math.max(1, base.w), (H - 2 * m) / Math.max(1, base.h)))); // text stays inside the frame k = Math.max(SMIN, Math.min(SMAX, k));
-  if (id !== 'background') k = Math.min(k, Math.max(SMIN, Math.min(W / Math.max(1, base.w), H / Math.max(1, base.h)))); // nothing but the background grows past the frame
+  const L = layoutOf(), o = L[id]; if (!o || !base) return; const W = pv.cv.width, H = pv.cv.height, m = Math.min(W, H) * 0.04, bid = baseId(id); // a copy follows its original's rules
+  let k = o.s || 1; if (TEXT_IDS.includes(bid)) k = Math.min(k, Math.max(SMIN, Math.min((W - 2 * m) / Math.max(1, base.w), (H - 2 * m) / Math.max(1, base.h)))); // text stays inside the frame k = Math.max(SMIN, Math.min(SMAX, k));
+  if (bid !== 'background') k = Math.min(k, Math.max(SMIN, Math.min(W / Math.max(1, base.w), H / Math.max(1, base.h)))); // nothing but the background grows past the frame
   const w = base.w * k, h = base.h * k, bx = base.x + base.w / 2, by = base.y + base.h / 2;
   let cx = bx + (o.x || 0) * W, cy = by + (o.y || 0) * H;
-  const f = id === 'background' ? 0.4 : 0.5; // everything but the background stays wholly inside the frame
+  const f = bid === 'background' ? 0.4 : 0.5; // everything but the background stays wholly inside the frame
   if (w < W) cx = Math.max(f * w, Math.min(W - f * w, cx)); if (h < H) cy = Math.max(f * h, Math.min(H - f * h, cy));
-  if (TEXT_IDS.includes(id) || id === 'guest') { const p = clearOfMark(pv.cv, cx - w / 2, cy - h / 2, w, h, m * 0.4); cx = p.x + w / 2; cy = p.y + h / 2; } // and off the watermark
+  if (TEXT_IDS.includes(bid) || bid === 'guest') { const p = clearOfMark(pv.cv, cx - w / 2, cy - h / 2, w, h, m * 0.4); cx = p.x + w / 2; cy = p.y + h / 2; } // and off the watermark
   setL(id, { s: +k.toFixed(3), x: +((cx - bx) / W).toFixed(4), y: +((cy - by) / H).toFixed(4) });
 }
 const baseOf = (id) => { const it = hitItems().find((x) => x.id === id); if (!it) return null; const o = L0(id), k = o.s || 1, W = pv.cv.width, H = pv.cv.height, cx = it.x + it.w / 2 - (o.x || 0) * W, cy = it.y + it.h / 2 - (o.y || 0) * H; return { x: cx - it.w / k / 2, y: cy - it.h / k / 2, w: it.w / k, h: it.h / k }; };
@@ -959,7 +979,8 @@ pv.cv.addEventListener('pointerdown', (ev) => {
   if (pts.size === 2 && cur) { const [a, b] = [...pts.values()]; drag = { mode: 'pinch', id: sel, d0: Math.hypot(a.x - b.x, a.y - b.y), s0: L0(sel).s || 1, base: baseOf(sel), moved: true }; tap = null; return; }
   if (cur) { const c = controls(cur);
     if (near(p, c.grip, c.rad)) { ev.preventDefault(); pv.cv.setPointerCapture(ev.pointerId); const cx = cur.x + cur.w / 2, cy = cur.y + cur.h / 2; drag = { mode: 'scale', id: sel, cx, cy, d0: Math.max(4, Math.hypot(p.x - cx, p.y - cy)), s0: L0(sel).s || 1, base: baseOf(sel), moved: false }; return; }
-    if (near(p, c.del, c.rad)) { ev.preventDefault(); return hideItem(sel); } }
+    if (near(p, c.del, c.rad)) { ev.preventDefault(); return hideItem(sel); }
+    if (c.dup && near(p, c.dup, c.rad)) { ev.preventDefault(); return duplicateItem(sel); } }
   const it = hitAt(p);
   if (ev.pointerType === 'touch' && (!it || it.id !== sel)) { tap = { p, id: it ? it.id : null, t: performance.now() }; return; } // let the browser scroll; decide on pointerup
   ev.preventDefault(); pv.cv.setPointerCapture(ev.pointerId);
@@ -972,7 +993,7 @@ pv.cv.addEventListener('pointerdown', (ev) => {
 pv.cv.addEventListener('pointermove', (ev) => {
   const p = canvasPt(ev); if (pts.has(ev.pointerId)) pts.set(ev.pointerId, p);
   if (tap && Math.hypot(p.x - tap.p.x, p.y - tap.p.y) > 12) tap = null; // it became a swipe
-  if (!drag) { let cur = 'default'; if (!busy || BG_EXPORT) { const it = sel && hitItems().find((x) => x.id === sel), c = it && controls(it); cur = c && near(p, c.grip, c.rad) ? 'nwse-resize' : c && near(p, c.del, c.rad) ? 'pointer' : hitAt(p) ? 'move' : 'default'; } pv.cv.style.cursor = cur; return; }
+  if (!drag) { let cur = 'default'; if (!busy || BG_EXPORT) { const it = sel && hitItems().find((x) => x.id === sel), c = it && controls(it); const onDup = c && c.dup && near(p, c.dup, c.rad); cur = c && near(p, c.grip, c.rad) ? 'nwse-resize' : (c && near(p, c.del, c.rad)) || onDup ? 'pointer' : hitAt(p) ? 'move' : 'default'; pv.cv.title = onDup ? 'Duplicate' : pvTitle; } pv.cv.style.cursor = cur; return; }
   const W = pv.cv.width, H = pv.cv.height;
   if (drag.mode === 'pinch') { if (pts.size < 2) return; const [a, b] = [...pts.values()]; setL(drag.id, { s: Math.max(SMIN, Math.min(SMAX, (drag.s0 * Math.hypot(a.x - b.x, a.y - b.y)) / Math.max(4, drag.d0))) }); }
   else if (drag.mode === 'scale') { drag.moved = true; setL(drag.id, { s: +Math.max(SMIN, Math.min(SMAX, (drag.s0 * Math.hypot(p.x - drag.cx, p.y - drag.cy)) / drag.d0)).toFixed(3) }); }
@@ -991,7 +1012,8 @@ pv.cv.addEventListener('keydown', (ev) => {
   if (!sel) { if ((ev.key === 'Enter' || ev.key === ' ') && ids.length) { ev.preventDefault(); selectItem(ids[ids.length - 1]); } return; }
   if (ev.key === 'Escape') { selectItem(null); return announce('Done editing'); }
   if (ev.key === 'Tab') { ev.preventDefault(); const i = ids.indexOf(sel); return selectItem(ids[(i + (ev.shiftKey ? -1 : 1) + ids.length) % ids.length]); }
-  if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); announce(`${ITEM_NAMES[sel] || sel} hidden`); return hideItem(sel); }
+  if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); announce(`${itemName(sel)} ${isCopy(sel) ? 'deleted' : 'hidden'}`); return hideItem(sel); }
+  if ((ev.key === 'd' || ev.key === 'D') && !ev.altKey) { ev.preventDefault(); return duplicateItem(sel); } // D (or Ctrl/⌘+D): duplicate
   const base = baseOf(sel);
   if (ev.key === '+' || ev.key === '=' || ev.key === '-') { ev.preventDefault(); setL(sel, { s: Math.max(SMIN, Math.min(SMAX, (L0(sel).s || 1) * (ev.key === '-' ? 1 / 1.08 : 1.08))) }); clampItem(sel, base); saveState(); layoutChanged(); return redrawLayout(); }
   if (!/^Arrow/.test(ev.key)) return;
@@ -1004,7 +1026,7 @@ function layoutChanged() {
   const L = S.layout[layoutKey()] || {}, hidden = Object.keys(L).filter((k) => L[k].hide), box = $('hiddenList');
   $('resetLayout').hidden = !Object.keys(L).length; box.hidden = !hidden.length; box.textContent = '';
   if (!hidden.length) return; box.append('Hidden: ');
-  for (const id of hidden) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = `Show ${(ITEM_NAMES[id] || id).toLowerCase()}`; b.onclick = () => { setL(id, { hide: false }); saveState(); layoutChanged(); redrawLayout(); }; box.append(b); }
+  for (const id of hidden) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = `Show ${itemName(id).toLowerCase()}`; b.onclick = () => { setL(id, { hide: false }); saveState(); layoutChanged(); redrawLayout(); }; box.append(b); }
   if (hidden.length > 1) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = 'Restore all'; b.onclick = () => { for (const id of hidden) setL(id, { hide: false }); saveState(); layoutChanged(); redrawLayout(); }; box.append(b); }
 }
 $('resetLayout').onclick = () => { delete S.layout[layoutKey()]; sel = null; saveState(); layoutChanged(); setupPreview(); };
@@ -1503,7 +1525,7 @@ async function runJob(J) {
   buildArtChips(); await setupPreview(); drawPreview(40); buildChips(); requestAnimationFrame(idleTick);
   // before any export: say so if this browser can't make MP4 (X, Instagram and TikTok need it)
   (async () => { try { const ok = (await pickVideoCodec(1080, 1350)) && (await aacOK()); $('mp4Note').hidden = !!ok; } catch { $('mp4Note').hidden = false; } })();
-  if (coarse) $('layoutTip').textContent = 'Tip: tap an item on the preview to select it, then drag, pinch, or use its × and corner handle. Swipe anywhere else to scroll.';
+  if (coarse) $('layoutTip').textContent = 'Tip: tap an item on the preview to select it, then drag, pinch, or use its × (delete), + (duplicate) and corner handle. Swipe anywhere else to scroll.';
   addEventListener('resize', () => S.pcm && drawWave());
   // Audio C: bridge for audio/*.js (voice polish, trim silences, who speaks); re-cutting applies the new sound everywhere
   window.GroklyAudioHost = { S, SR, FPS, MAXS, stop, cut, selLen, fitTrim: () => { fitTrim(); showTrim(); }, renderLines, drawPreview, curFrame, setPcm(p) { S.pcm = p; drawWave(); drawPreview(curFrame()); }, get subsOut() { return subsOut; }, set subsOut(v) { subsOut = v; }, get trimWas() { return trimWas; }, set trimWas(v) { trimWas = v; } };

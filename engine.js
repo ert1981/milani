@@ -210,12 +210,18 @@ function makeWave(cv) { const api = {};
   }
   // one movable item: drawn shifted by the user's offset; its box is kept for hit-testing
   // o = { x, y: offset as a fraction of W / H, s: scale around the item's centre, hide: true when the user deleted it }
+  const CTX_P = ['font', 'textAlign', 'textBaseline', 'direction', 'globalAlpha', 'fillStyle', 'strokeStyle', 'lineWidth', 'lineCap', 'lineJoin', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalCompositeOperation', 'filter', 'imageSmoothingEnabled'];
+  let copies = []; const flushCopies = () => { const q = copies; copies = []; q.forEach((d) => d()); };
   function item(id, box, fn) {
-    const o = (O.layout && O.layout[id]) || null; if (o && o.hide) return;
-    const dx = o && o.x ? o.x * W : 0, dy = o && o.y ? o.y * H : 0, k = o && o.s ? o.s : 1, cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
-    g.save(); if (dx || dy || k !== 1) { g.translate(cx + dx, cy + dy); if (k !== 1) g.scale(k, k); g.translate(-cx, -cy); } fn(); g.restore();
-    items.push({ id, x: cx + dx - (box[2] * k) / 2, y: cy + dy - (box[3] * k) / 2, w: box[2] * k, h: box[3] * k });
+    const L = O.layout || {}, one = (k, o, done) => { const dx = o && o.x ? o.x * W : 0, dy = o && o.y ? o.y * H : 0, k2 = o && o.s ? o.s : 1, cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
+      g.save(); if (done) done(); if (dx || dy || k2 !== 1) { g.translate(cx + dx, cy + dy); if (k2 !== 1) g.scale(k2, k2); g.translate(-cx, -cy); } fn(); g.restore();
+      items.push({ id: k, x: cx + dx - (box[2] * k2) / 2, y: cy + dy - (box[3] * k2) / 2, w: box[2] * k2, h: box[3] * k2 }); };
+    const o0 = L[id] || null; if (!(o0 && o0.hide)) one(id, o0);
+    // the user's copies ("<id>~<n>", made with its + control): drawn over everything at the end of the frame, with the canvas state of this moment
+    for (const k of Object.keys(L)) if (k.startsWith(id + '~') && L[k] && !L[k].hide) { const st = ctxState(); copies.push(() => one(k, L[k], () => ctxSet(st))); }
   }
+  function ctxState() { const s = { m: g.getTransform() }; for (const p of CTX_P) s[p] = g[p]; return s; }
+  function ctxSet(s) { g.setTransform(s.m); for (const p of CTX_P) g[p] = s[p]; }
   function disc(im, cx, cy, r, glow) {
     if (!im) { g.fillStyle = accent; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); return; }
     g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.clip(); cover(im, cx - r, cy - r, 2 * r, 2 * r); g.restore();
@@ -363,7 +369,7 @@ function makeWave(cv) { const api = {};
   }
   api.drawFrame = function (f, t) {
     if (f.sbands) f = Object.assign({}, f, { bands: spread(f.sbands, O.style === 'waves') });
-    markN++; cv._wm = cv._wmRect = null; items = []; background(f);
+    markN++; cv._wm = cv._wmRect = null; items = []; copies = []; background(f);
     const st = STYLES[O.style] ? O.style : 'bars';
     const ring = st === 'circle' || st === 'orbit';
     // square and wide frames have less height: smaller badge, tighter spacing (sizes follow the short side)
@@ -375,7 +381,7 @@ function makeWave(cv) { const api = {};
     if (st === 'waves') item('wave', wbox, () => STYLES.waves(f, t, cy));
     badge(W / 2, cy, R, f);
     if (st !== 'waves') item('wave', wbox, () => STYLES[st](f, t, wy, R));
-    text(f); api.items = items;
+    text(f); flushCopies(); api.items = items;
   };
   api.frameCanvas = cv;
 
@@ -422,12 +428,18 @@ function makeCards(cv) { const api = {};
   const rr = (x, y, w, h, r) => { g.beginPath(); g.roundRect(x, y, w, h, r); };
   // one movable item: drawn shifted by the user's offset; its box is kept for hit-testing
   // o = { x, y: offset as a fraction of W / H, s: scale around the item's centre, hide: true when the user deleted it }
+  const CTX_P = ['font', 'textAlign', 'textBaseline', 'direction', 'globalAlpha', 'fillStyle', 'strokeStyle', 'lineWidth', 'lineCap', 'lineJoin', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalCompositeOperation', 'filter', 'imageSmoothingEnabled'];
+  let copies = []; const flushCopies = () => { const q = copies; copies = []; q.forEach((d) => d()); };
   function item(id, box, fn) {
-    const o = (O.layout && O.layout[id]) || null; if (o && o.hide) return;
-    const dx = o && o.x ? o.x * W : 0, dy = o && o.y ? o.y * H : 0, k = o && o.s ? o.s : 1, cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
-    g.save(); if (dx || dy || k !== 1) { g.translate(cx + dx, cy + dy); if (k !== 1) g.scale(k, k); g.translate(-cx, -cy); } fn(); g.restore();
-    items.push({ id, x: cx + dx - (box[2] * k) / 2, y: cy + dy - (box[3] * k) / 2, w: box[2] * k, h: box[3] * k });
+    const L = O.layout || {}, one = (k, o, done) => { const dx = o && o.x ? o.x * W : 0, dy = o && o.y ? o.y * H : 0, k2 = o && o.s ? o.s : 1, cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
+      g.save(); if (done) done(); if (dx || dy || k2 !== 1) { g.translate(cx + dx, cy + dy); if (k2 !== 1) g.scale(k2, k2); g.translate(-cx, -cy); } fn(); g.restore();
+      items.push({ id: k, x: cx + dx - (box[2] * k2) / 2, y: cy + dy - (box[3] * k2) / 2, w: box[2] * k2, h: box[3] * k2 }); };
+    const o0 = L[id] || null; if (!(o0 && o0.hide)) one(id, o0);
+    // the user's copies ("<id>~<n>", made with its + control): drawn over everything at the end of the frame, with the canvas state of this moment
+    for (const k of Object.keys(L)) if (k.startsWith(id + '~') && L[k] && !L[k].hide) { const st = ctxState(); copies.push(() => one(k, L[k], () => ctxSet(st))); }
   }
+  function ctxState() { const s = { m: g.getTransform() }; for (const p of CTX_P) s[p] = g[p]; return s; }
+  function ctxSet(s) { g.setTransform(s.m); for (const p of CTX_P) g[p] = s[p]; }
   function cover(im, x, y, w, h) { if (!im || !im.width) return; const s = Math.max(w / im.width, h / im.height); g.drawImage(im, x + (w - im.width * s) / 2, y + (h - im.height * s) / 2, im.width * s, im.height * s); }
   function img(x, y, w, h, clip, im = photo) { g.save(); if (clip) { clip(); g.clip(); } cover(im, x, y, w, h); g.restore(); }
   // the card's base: its colour, then the artwork / background image over the whole frame
@@ -644,7 +656,7 @@ function makeCards(cv) { const api = {};
     },
   };
   // smoothed bands with cava's gravity fall-off (lib/analyze.mjs, MIT © 2015 Karl Stavestrand) when the analysis provides them
-  api.drawFrame = function (f) { markN++; cv._wm = cv._wmRect = null; if (f.sbands) f = Object.assign({}, f, { bands: f.sbands }); items = []; CARDS[O.style](f); api.items = items; };
+  api.drawFrame = function (f) { markN++; cv._wm = cv._wmRect = null; if (f.sbands) f = Object.assign({}, f, { bands: f.sbands }); items = []; copies = []; CARDS[O.style](f); flushCopies(); api.items = items; };
   api.frameCanvas = cv;
 
 return api; }
