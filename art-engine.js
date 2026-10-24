@@ -10,7 +10,7 @@
     ['old-tree', 'Old Tree'], ['a-field-in-the-wind', 'A Field in the Wind'], ['fern', 'Fern'],
     ['imago', 'Imago'], ['hart', 'Hart'], 
     
-    ['muz-ii', 'Muz II'],
+    ['muz-ii', 'Muz II'], ['paris', 'Paris'],
   ];
   const WARM = { 'spring-behind-the-river-v': 64, 'spring-behind-the-river-iii': 64, 'dusk-hills': 30 };
   const DEFAULT_SEED = '0x6d696c616e69617274652d6772' + '0'.repeat(38);
