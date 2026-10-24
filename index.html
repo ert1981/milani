@@ -77,6 +77,8 @@ h3 { font: 600 13px/1.2 var(--body); margin: 4px 0 0; color: var(--soft); }
 .th span { position: absolute; top: 0; left: 50%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: var(--ink); color: var(--paper); display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.18); transition: transform .12s; }
 .th span svg { width: 11px; height: 11px; } .th.end span svg { transform: scaleX(-1); }
 .th:hover span, .th.on span, .th:focus-visible span { transform: scale(1.15); } .th:focus-visible span { box-shadow: 0 0 0 3px var(--line); }
+/* the playhead: a thin red line that follows the sound while the preview plays */
+.ph { position: absolute; top: -3px; bottom: -3px; left: 0; width: 2px; margin-left: -1px; border-radius: 2px; background: var(--rec); box-shadow: 0 0 0 .5px var(--card); pointer-events: none; will-change: transform; }
 .trimRow { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--soft); font-variant-numeric: tabular-nums; }
 .trimRow b { color: var(--ink); font-weight: 600; } .trimRow .btn svg { width: 12px; height: 12px; }
 .sound .name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46%; }
@@ -233,7 +235,7 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
           <button class="btn" id="upload"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 14V3M5 8l5-5 5 5M3 17h14"/></svg>Upload audio or video</button>
           <input type="file" id="file" accept="audio/*,video/*" class="vh" tabindex="-1" aria-hidden="true">
         </div>
-        <div class="sound"><span class="name" id="soundName">Sample beat</span><div class="wv"><canvas id="wave"></canvas><div class="th" id="trimA" role="slider" tabindex="0" aria-label="Start of the part to use" title="Drag to set the start" hidden><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg></span></div><div class="th end" id="trimB" role="slider" tabindex="0" aria-label="End of the part to use" title="Drag to set the end" hidden><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg></span></div></div></div>
+        <div class="sound"><span class="name" id="soundName">Sample beat</span><div class="wv"><canvas id="wave"></canvas><div class="ph" id="playhead" hidden></div><div class="th" id="trimA" role="slider" tabindex="0" aria-label="Start of the part to use" title="Drag to set the start" hidden><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg></span></div><div class="th end" id="trimB" role="slider" tabindex="0" aria-label="End of the part to use" title="Drag to set the end" hidden><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg></span></div></div></div>
         <div class="trimRow" id="trimBox" hidden><span id="trimInfo"></span><button class="btn small" id="trimPlay" aria-label="Play the selected part"><svg viewBox="0 0 20 20" fill="currentColor"><path id="trimPlayIcon" d="M5 3l12 7-12 7z"/></svg>Play selection</button></div>
         <div class="note" id="xNote" hidden>X allows up to 2:20 without Premium.</div>
         <div class="err" id="soundErr" role="alert" hidden></div>
@@ -533,14 +535,14 @@ function trimHandle(el, isEnd) {
     // the dragged edge goes where it is pulled; the other edge follows when the part gets shorter than 1 s or longer than the limit
     if (isEnd) { S.trimEnd = Math.max(MIN_SEL, Math.min(dur, t)); S.trim = Math.max(0, S.trimEnd - win, Math.min(S.trim, S.trimEnd - MIN_SEL)); }
     else { S.trim = Math.max(0, Math.min(dur - MIN_SEL, t)); S.trimEnd = Math.min(dur, S.trim + win, Math.max(S.trimEnd, S.trim + MIN_SEL)); } drawWave(); };
-  let drag = false, was = null;
-  el.addEventListener('pointerdown', (e) => { if (!S.full || !userSound) return; e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch {} drag = true; was = [S.trim, S.trimEnd]; stop(); el.classList.add('on'); el.focus({ preventScroll: true }); });
-  el.addEventListener('pointermove', (e) => { if (!drag) return; const r = $('wave').getBoundingClientRect(); set(((e.clientX - r.left) / r.width) * (S.full.length / SR)); });
+  let drag = false, moved = false, was = null;
+  el.addEventListener('pointerdown', (e) => { if (!S.full || !userSound) return; e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch {} drag = true; moved = false; was = [S.trim, S.trimEnd]; el.classList.add('on'); el.focus({ preventScroll: true }); });
+  el.addEventListener('pointermove', (e) => { if (!drag) return; if (!moved) { moved = true; stop(); } const r = $('wave').getBoundingClientRect(); set(((e.clientX - r.left) / r.width) * (S.full.length / SR)); });
   const end = () => { if (!drag) return; drag = false; el.classList.remove('on'); if (S.trim !== was[0] || S.trimEnd !== was[1]) applyTrim(); };
   el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
   el.addEventListener('keydown', (e) => { const d = { ArrowLeft: -0.1, ArrowDown: -0.1, ArrowRight: 0.1, ArrowUp: 0.1, PageDown: -5, PageUp: 5 }[e.key]; if (d === undefined || !userSound) return; e.preventDefault(); stop();
     set((isEnd ? S.trimEnd : S.trim) + d * (e.shiftKey ? 10 : 1)); clearTimeout(el._t); el._t = setTimeout(applyTrim, 400); });
-  el.addEventListener('click', (e) => e.stopPropagation());
+  el.addEventListener('click', (e) => { e.stopPropagation(); if (!moved) waveSeek(e); }); // a tap on a handle without dragging seeks there (short parts are mostly under the handles)
 }
 trimHandle($('trimA'), false); trimHandle($('trimB'), true);
 $('trimPlay').onclick = () => { if (src) return stop(); pausedAt = 0; $('play').click(); };
@@ -573,6 +575,10 @@ function drawWave() {
   showTrim();
 }
 let waveCache = null;
+// the playhead, from the audio clock (what the speaker plays now), every animation frame; hidden outside the selection
+function movePlayhead() { const ph = $('playhead'); if (!src || !ac) { ph.hidden = true; return; }
+  const x = ac.currentTime - t0 - (ac.outputLatency || 0), len = S.pcm.length / SR; if (x < 0 || x >= len) { ph.hidden = true; return; }
+  const whole = userSound ? S.full.length / SR : len, t = (userSound ? S.trim : 0) + x; ph.hidden = false; ph.style.transform = `translateX(${(t / whole) * $('wave').clientWidth}px)`; }
 const showErr = (m) => { $('soundErr').textContent = m; $('soundErr').hidden = !m; if (m) uiSound('error'); };
 // UI sounds (ui-sound.js): off by default; never while the microphone records or a video is being made
 const uiSound = (n) => { if (window.GroklyUISound && (!busy || n === 'done' || n === 'error')) GroklyUISound.play(n); }; // done / error mark the end of an export
@@ -799,7 +805,8 @@ function mvRebuild(now) {
   if (now) go(); else mvTimer = setTimeout(go, 350); // taps in a row (artworks, cut style) make one new edit
 }
 function seekTo(sec) { const playing = !!src; if (playing) stop(); pausedAt = Math.max(0, Math.min(S.pcm.length / SR - 0.05, sec)); drawPreview(Math.round(pausedAt * FPS)); if (playing) $('play').click(); }
-$('wave').addEventListener('click', (ev) => { const r = $('wave').getBoundingClientRect(), x = (ev.clientX - r.left) / r.width; if (!userSound) return seekTo(x * (S.pcm.length / SR)); const t = x * (S.full.length / SR) - S.trim; if (t >= 0 && t <= selLen()) seekTo(t); });
+const waveSeek = (ev) => { const r = $('wave').getBoundingClientRect(), x = (ev.clientX - r.left) / r.width; if (!userSound) return seekTo(x * (S.pcm.length / SR)); const t = x * (S.full.length / SR) - S.trim; if (t >= 0 && t <= selLen()) seekTo(t); };
+$('wave').addEventListener('click', waveSeek);
 $('wave').style.cursor = 'pointer'; $('wave').title = 'Click to play from here';
 $('mvShots').addEventListener('click', (ev) => { const d = ev.target.closest('[data-k]'); if (d && S.mvPlan) seekTo(S.mvPlan.shots[+d.dataset.k].start / FPS); });
 function renderShots() {
@@ -1010,7 +1017,7 @@ function idleTick(ts) {
   requestAnimationFrame(idleTick);
 }
 const curFrame = () => (src ? Math.floor((ac.currentTime - t0 - (ac.outputLatency || 0)) * FPS) : 0); // what the speaker plays now
-function stop() { if (src) { try { src.stop(); } catch {} src = null; } if (window.GroklyMusic) GroklyMusic.stopPreview(); /* Background music */ cancelAnimationFrame(raf); $('playIcon').setAttribute('d', 'M5 3l12 7-12 7z'); $('play').setAttribute('aria-label', 'Play preview'); }
+function stop() { if (src) { try { src.stop(); } catch {} src = null; } if (window.GroklyMusic) GroklyMusic.stopPreview(); /* Background music */ cancelAnimationFrame(raf); $('playhead').hidden = true; $('playIcon').setAttribute('d', 'M5 3l12 7-12 7z'); $('play').setAttribute('aria-label', 'Play preview'); }
 let pausedAt = 0; // seconds: Pause keeps the position, Play resumes from it, a click on the waveform or a shot seeks
 $('play').onclick = () => {
   if (src) { pausedAt = Math.max(0, curFrame()) / FPS; return stop(); }
@@ -1031,7 +1038,7 @@ function mvPlayNow() {
   const me = src; t0 = ac.currentTime + .05 - playFrom;
   if (gn) { const gAt = (x) => Math.min(fd.fin ? Math.min(1, x / fd.fin) : 1, fd.fout ? Math.max(0, Math.min(1, (L - x) / fd.fout)) : 1); gn.gain.setValueAtTime(gAt(playFrom), t0 + playFrom); [fd.fin, L - fd.fout, L].filter((x) => x > playFrom).forEach((x) => gn.gain.linearRampToValueAtTime(gAt(x), t0 + x)); } src.start(t0 + playFrom, playFrom); /* team A: resume at the paused position */ if (window.GroklyMusic) GroklyMusic.startPreview(ac, t0, S.pcm); /* Background music */ src.onended = () => { if (src && src !== me) return; if (src) { stop(); pausedAt = 0; } drawPreview(0); }; // only the node that ended
   $('playIcon').setAttribute('d', 'M5 3h4v14H5zM11 3h4v14h-4z'); $('play').setAttribute('aria-label', 'Pause preview');
-  const loop = () => { drawPreview(curFrame()); raf = requestAnimationFrame(loop); }; loop();
+  const loop = () => { drawPreview(curFrame()); movePlayhead(); raf = requestAnimationFrame(loop); }; loop();
 };
 
 // ---------- editor tools ----------
