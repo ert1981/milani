@@ -177,9 +177,9 @@
     let items = [];
     const CTX_P = ['font', 'textAlign', 'textBaseline', 'direction', 'globalAlpha', 'fillStyle', 'strokeStyle', 'lineWidth', 'lineCap', 'lineJoin', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalCompositeOperation', 'filter', 'imageSmoothingEnabled'];
     let copies = []; const flushCopies = () => { const q = copies; copies = []; q.forEach((d) => d()); };
-    function item(id, box, fn) {
+    function item(id, box, fn, shape) { // shape: the item's own outline (a path), for a photo put in this box with its camera control
       const L = O.layout || {}, one = (k, o, done) => { const dx = o && o.x ? o.x * W : 0, dy = o && o.y ? o.y * H : 0, k2 = o && o.s ? o.s : 1, cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
-        g.save(); if (done) done(); if (dx || dy || k2 !== 1) { g.translate(cx + dx, cy + dy); if (k2 !== 1) g.scale(k2, k2); g.translate(-cx, -cy); } fn(); g.restore();
+        g.save(); if (done) done(); if (dx || dy || k2 !== 1) { g.translate(cx + dx, cy + dy); if (k2 !== 1) g.scale(k2, k2); g.translate(-cx, -cy); } const bp = O.boxPics && O.boxPics[k]; if (bp && bp.width) boxPic(bp, box, shape); else fn(); g.restore();
         items.push({ id: k, x: cx + dx - (box[2] * k2) / 2, y: cy + dy - (box[3] * k2) / 2, w: box[2] * k2, h: box[3] * k2 }); };
       const o0 = L[id] || null; if (!(o0 && o0.hide)) one(id, o0);
       // the user's copies ("<id>~<n>", made with its + control): drawn over everything at the end of the frame, with the canvas state of this moment
@@ -187,6 +187,8 @@
     }
     function ctxState() { const s = { m: g.getTransform() }; for (const p of CTX_P) s[p] = g[p]; return s; }
     function ctxSet(s) { g.setTransform(s.m); for (const p of CTX_P) g[p] = s[p]; }
+    // the user's own photo in a box (its camera control): it fills the box, cut to the item's outline (else its rectangle), like object-fit: cover
+    function boxPic(im, b, shape) { g.save(); g.globalAlpha = 1; g.filter = 'none'; g.shadowBlur = 0; g.beginPath(); if (shape) shape(); else g.rect(b[0], b[1], b[2], b[3]); g.clip(); const s = Math.max(b[2] / im.width, b[3] / im.height); g.drawImage(im, b[0] + (b[2] - im.width * s) / 2, b[1] + (b[3] - im.height * s) / 2, im.width * s, im.height * s); g.restore(); }
     const hexA = (c, a) => { if (!/^#[0-9a-f]{6}$/i.test(c || '')) return `rgba(0,0,0,${a})`; const n = parseInt(c.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
     function overlay(f) {
       const u = Math.min(W, H) / 1080, ts = O.textScale || 1;
@@ -202,7 +204,7 @@
           g.save(); g.beginPath(); g.arc(cx, cy, rr, 0, 7); g.clip();
           const s = Math.max((2 * rr) / badge.width, (2 * rr) / badge.height); g.drawImage(badge, cx - (badge.width * s) / 2, cy - (badge.height * s) / 2, badge.width * s, badge.height * s); g.restore();
           g.strokeStyle = O.accent || 'rgba(255,255,255,.92)'; g.lineWidth = 3.5 * u; g.beginPath(); g.arc(cx, cy, rr + 1.75 * u, 0, 7); g.stroke();
-        });
+        }, () => g.arc(cx, cy, rr, 0, 7));
         tx = rtl ? cx - r - 26 * u : cx + r + 26 * u;
       }
       const maxW = (rtl ? tx : W - tx) - 60 * u;

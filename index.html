@@ -207,6 +207,31 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --rec: #f07d6c; --rec-ink: #0b1418; --ctl: #6f8086; } }
 :root[data-theme="dark"] { --rec: #f07d6c; --rec-ink: #0b1418; --ctl: #6f8086; }
 .btn, .seg, input[type=text], textarea, select, .fonts button, .presets button, .swatches button, .line .tm input, .line .who, .avatar { --line: var(--ctl); }
+/* Draw your own: the paint editor (its drawing becomes the artwork) */
+.drawRow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; }
+.drawRow .note { margin: 0; }
+.artgrid .chip.draw .ico { width: 100%; aspect-ratio: 4 / 5; border-radius: 6px; background: var(--well); display: grid; place-items: center; color: var(--ink); }
+.artgrid .chip.draw .ico svg { width: 34px; height: 34px; }
+.paint { position: fixed; inset: 0; z-index: 60; background: rgba(8,14,17,.97); color: #eee8e1; display: grid; grid-template-rows: auto 1fr auto; gap: 8px; padding: max(8px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); font-family: var(--body); }
+.paint .pbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.paint .pbar.top { justify-content: space-between; }
+.paint .pbar.top b { font: 600 15px/1 var(--body); }
+.paint .btn { background: #16242a; color: #eee8e1; border-color: #2a3a40; }
+.paint .btn.go { background: #6cc0d6; border-color: #6cc0d6; color: #0b1418; }
+.paint .stage { min-height: 0; display: grid; place-items: center; }
+.paint canvas { touch-action: none; border-radius: 8px; box-shadow: 0 0 0 1px #2a3a40; cursor: crosshair; display: block; }
+.paint .cols { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.paint .cols button, .paint .cols label { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #2a3a40; padding: 0; cursor: pointer; position: relative; overflow: hidden; }
+.paint .cols button[aria-pressed="true"], .paint .cols label.on { border-color: #eee8e1; box-shadow: 0 0 0 2px #6cc0d6; }
+.paint .cols label { background: conic-gradient(#e2614f, #ffd166, #6cc0d6, #b388eb, #e2614f); }
+.paint .cols input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.paint .seg { background: #16242a; }
+.paint .seg button { color: #eee8e1; }
+.paint .seg button[aria-pressed="true"] { background: #eee8e1; color: #0b1418; }
+.paint .size { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.paint .size input { width: 110px; }
+.paint .size i { display: inline-block; border-radius: 50%; background: #eee8e1; }
+.paint .hint { font-size: 12.5px; color: #97a6ab; text-align: center; }
 </style>
 </head>
 <body>
@@ -223,7 +248,7 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
         <button class="play" id="play" aria-label="Play preview"><svg viewBox="0 0 20 20"><path id="playIcon" d="M5 3l12 7-12 7z" fill="currentColor"/></svg></button>
       </div>
       <div class="meta" id="meta">Sample beat · press play to hear it</div>
-      <div class="layoutRow"><span class="note" id="layoutTip">Tip: tap anything on the preview to move, resize (corner), duplicate (+) or hide it (×).</span><span class="vh" id="pvLive" aria-live="polite"></span><button class="btn small" id="resetLayout" hidden>Reset layout</button><span class="hiddenList" id="hiddenList" hidden></span></div>
+      <div class="layoutRow"><span class="note" id="layoutTip">Tip: tap anything on the preview to move, resize (corner), duplicate (+) or hide it (×).</span><span class="vh" id="pvLive" aria-live="polite"></span><button class="btn small" id="boxPicRemove" hidden>Remove photo</button><button class="btn small" id="resetLayout" hidden>Reset layout</button><span class="hiddenList" id="hiddenList" hidden></span></div>
     </div>
 
     <div class="panel">
@@ -258,6 +283,7 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
         </div>
 
         <div class="pane" id="p-tpl" role="tabpanel">
+          <div class="drawRow"><button class="btn small" id="drawOpen" title="Draw your own picture; it moves with your sound"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20l1.2-4.6L15.6 5a2 2 0 012.8 0l.6.6a2 2 0 010 2.8L8.6 18.8z"/><path d="M13.8 6.8l3.4 3.4"/><path d="M4 20l4.6-1.2"/></svg>Draw your own</button><span class="note">Draw with your finger or mouse; your drawing moves with the sound.</span></div>
           <h3>Post</h3><div class="styles" data-group="post"></div>
           <h3>Story</h3><div class="styles" data-group="story"></div>
           <h3>YouTube</h3><div class="styles" data-group="wide"></div>
@@ -271,6 +297,7 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
           <div class="note">Use one of Reza Milani's hand-coded generative artworks as the picture of your template, in place of a photo. It moves with your sound.</div>
           <div class="row"><button class="btn small" id="usePhoto">Use my photo instead</button></div>
           <div class="artgrid" id="artGrid"></div>
+          <input type="file" id="boxFile" accept="image/*" hidden><!-- the camera control on a selected box: the device's photos (and camera on phones) -->
           <div class="row"><button class="btn generate" id="artSeed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/></svg>Generate a new one</button><button class="btn small" id="artBack" disabled>Back</button><button class="btn small" id="artSeedReset">Original</button></div>
           <div class="note">Every press of Generate draws a brand-new version of this artwork that nobody has seen before.</div>
           <div class="note" id="artNote" role="status" aria-live="polite"></div>
@@ -395,6 +422,20 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
   <footer><span>Made by Reza Milani · MilaniArte</span><a href="THIRD_PARTY_NOTICES.txt" target="_blank" rel="noopener" style="color:inherit">Licences</a><span id="footSoon">Full-length, mark-free videos and 4K for collectors of Reza Milani’s art · <a href="https://verse.works/rezamilani" target="_blank" rel="noopener">His artworks on Verse</a></span><a class="grokLink" href="https://x.ai/bot/XNTlbV36RngI9GC0Unp9v" target="_blank" rel="noopener">Milani on Grok Bot</a><span class="social"><a href="https://x.com/RezaMilani" target="_blank" rel="noopener" aria-label="Reza Milani on X" title="X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a><a href="https://www.instagram.com/rezamilani.official/" target="_blank" rel="noopener" aria-label="Reza Milani on Instagram" title="Instagram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.16c3.2 0 3.58.01 4.85.07 1.17.05 1.8.25 2.23.41.56.22.96.48 1.38.9.42.42.68.82.9 1.38.16.42.36 1.06.41 2.23.06 1.27.07 1.65.07 4.85s-.01 3.58-.07 4.85c-.05 1.17-.25 1.8-.41 2.23-.22.56-.48.96-.9 1.38-.42.42-.82.68-1.38.9-.42.16-1.06.36-2.23.41-1.27.06-1.65.07-4.85.07s-3.58-.01-4.85-.07c-1.17-.05-1.8-.25-2.23-.41a3.7 3.7 0 0 1-1.38-.9 3.7 3.7 0 0 1-.9-1.38c-.16-.42-.36-1.06-.41-2.23C2.17 15.58 2.16 15.2 2.16 12s.01-3.58.07-4.85c.05-1.17.25-1.8.41-2.23.22-.56.48-.96.9-1.38.42-.42.82-.68 1.38-.9.42-.16 1.06-.36 2.23-.41C8.42 2.17 8.8 2.16 12 2.16M12 0C8.74 0 8.33.01 7.05.07 5.78.13 4.9.33 4.14.63a5.9 5.9 0 0 0-2.13 1.38A5.9 5.9 0 0 0 .63 4.14C.33 4.9.13 5.78.07 7.05.01 8.33 0 8.74 0 12s.01 3.67.07 4.95c.06 1.27.26 2.15.56 2.91.3.79.71 1.46 1.38 2.13a5.9 5.9 0 0 0 2.13 1.38c.76.3 1.64.5 2.91.56C8.33 23.99 8.74 24 12 24s3.67-.01 4.95-.07c1.27-.06 2.15-.26 2.91-.56a5.9 5.9 0 0 0 2.13-1.38 5.9 5.9 0 0 0 1.38-2.13c.3-.76.5-1.64.56-2.91.06-1.28.07-1.69.07-4.95s-.01-3.67-.07-4.95c-.06-1.27-.26-2.15-.56-2.91a5.9 5.9 0 0 0-1.38-2.13A5.9 5.9 0 0 0 19.86.63c-.76-.3-1.64-.5-2.91-.56C15.67.01 15.26 0 12 0zm0 5.84a6.16 6.16 0 1 0 0 12.32 6.16 6.16 0 0 0 0-12.32zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.4-11.85a1.44 1.44 0 1 0 0 2.88 1.44 1.44 0 0 0 0-2.88z"/></svg></a></span></footer>
 </div>
 
+<div class="paint" id="paint" role="dialog" aria-modal="true" aria-labelledby="paintTitle" hidden>
+  <div class="pbar top"><button class="btn small" id="paintCancel">Cancel</button><b id="paintTitle">Draw your own</b><button class="btn small go" id="paintDone">Done</button></div>
+  <div class="stage" id="paintStage"><canvas id="paintCv" aria-label="Drawing area. Draw with a finger, a pen or the mouse."></canvas></div>
+  <div class="pbar">
+    <div class="cols" id="paintCols" role="group" aria-label="Colour"></div>
+    <label class="size">Size <input type="range" id="paintSize" min="2" max="48" value="8" aria-label="Brush size"><i id="paintDot"></i></label>
+  </div>
+  <div class="pbar">
+    <div class="seg" id="paintTool" role="group" aria-label="Tool"><button data-t="pen" aria-pressed="true">Pen</button><button data-t="eraser" aria-pressed="false">Eraser</button></div>
+    <div class="seg" id="paintPaper" role="group" aria-label="Paper"><button data-p="#0c0c0d" aria-pressed="true">Dark</button><button data-p="#f4efe6" aria-pressed="false">Light</button></div>
+    <button class="btn small" id="paintUndo" disabled>Undo</button><button class="btn small" id="paintClear">Clear</button>
+  </div>
+  <div class="hint">Press Done and your drawing becomes the picture: it waves, pulses and glows with your sound.</div>
+</div>
 <script src="mp4-muxer.js"></script>
 <script src="vendor/webm-muxer.js"></script>
 <script src="vendor/fix-webm-duration.js"></script>
@@ -403,6 +444,7 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
 <script src="ui-sound.js"></script>
 <script src="engine.js"></script>
 <script src="art-engine.js"></script>
+<script src="art/drawing/draw-core.js"></script><!-- Draw your own -->
 <script src="web3-pass.js"></script><!-- Grokly Pass -->
 <script src="music/music3.js"></script><script src="music/bg-music.js"></script><!-- Background music -->
 <script src="audio/dsp.js"></script><script src="audio/voice-polish.js"></script><script src="audio/silence.js"></script><script src="audio/speakers.js"></script><script src="audio/beat-sync.js"></script><!-- Audio C -->
@@ -426,10 +468,11 @@ const fontStack = (f) => (!f ? SYS_SANS : f.includes(',') ? f : `"${f}", ${SYS_S
 const COLOR_NAMES = { '#0c0c0d': 'Black', '#f3f1ec': 'Off-white', '#e6dfd8': 'Sand', '#005066': 'Deep teal', '#0099cc': 'Sky blue', '#0058a0': 'Royal blue', '#ec7a6a': 'Coral', '#4f2d3a': 'Plum', '#b291b4': 'Lavender', '#004b33': 'Forest green', '#87a29a': 'Sage', '#4b4a66': 'Slate', '#b2d4cb': 'Mint', '#ffffff': 'White' };
 const PALETTE = ['#0c0c0d', '#f3f1ec', '#e6dfd8', '#005066', '#0099cc', '#0058a0', '#ec7a6a', '#4f2d3a', '#b291b4', '#004b33', '#87a29a', '#4b4a66', '#b2d4cb', '#ffffff'];
 const S = { style: 'card:square', fmt: 'post', pcm: null, full: null, feats: null, name: 'Sample beat', avatar: null, trim: 0, font: '', textScale: 1,
-  subs: [], subFont: '', subScale: 1, subPos: 'auto', subLook: 'box', subColor: 'auto', bg: null, ink: null, acc: null, q: 1080, wm: true, wmStyle: 'sig' /* founder: signature + "Made with Milani" by default */, pic: { kind: 'photo' }, userPhoto: false, artSeeds: {}, artHist: {}, artVers: {}, lastArt: null, guest: null, bgImage: null, layout: {}, mode: 'voice', mv: { arts: [], style: 'calm', trans: 'cut', seed: (Math.random() * 2 ** 31) >>> 0, hist: [] } };
+  subs: [], subFont: '', subScale: 1, subPos: 'auto', subLook: 'box', subColor: 'auto', bg: null, ink: null, acc: null, q: 1080, wm: true, wmStyle: 'sig' /* founder: signature + "Made with Milani" by default */, pic: { kind: 'photo' }, userPhoto: false, artSeeds: {}, artHist: {}, artVers: {}, lastArt: null, guest: null, bgImage: null, layout: {}, boxPics: {}, drawing: null, mode: 'voice', mv: { arts: [], style: 'calm', trans: 'cut', seed: (Math.random() * 2 ** 31) >>> 0, hist: [] } };
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 const artSeedOf = (id) => S.artSeeds[id] || GroklyArt.defaultSeed;
 const picIsArt = () => S.pic.kind === 'art';
+const isDrawing = () => picIsArt() && S.pic.id === 'drawing';
 const kindOf = (s) => (s.startsWith('card:') ? 'card' : s === 'full' ? 'full' : 'wave');
 const isCard = (s) => s.startsWith('card:'), cardFmt = (s) => (CARDS.find(([n]) => 'card:' + n === s) || [])[1];
 const fmtT = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
@@ -449,6 +492,20 @@ const SAVE_KEYS = ['wmStyle', 'mode', 'mv', 'colourSeed', 'fmt', 'bg', 'ink', 'a
 // drag-to-move layout: offsets (fraction of width / height) per item, kept per template + video shape
 const layoutKey = (st = S) => `${st.style}|${isCard(st.style) ? cardFmt(st.style) : st.fmt}`;
 const layoutOf = (st = S) => (st.layout[layoutKey(st)] = st.layout[layoutKey(st)] || {});
+// Draw your own (art/drawing): the drawing is the artwork "drawing"; its seed is the drawing's hash, and the art frame reads it from here
+window.__milaniDrawings = window.__milaniDrawings || {};
+let drawThumb = '';
+function useDrawing(d) { // register a (clean) drawing and return its seed
+  const seed = MilaniDraw.hash(d); window.__milaniDrawings[seed] = d; S.drawing = d; S.artSeeds.drawing = seed;
+  const c = document.createElement('canvas'); c.width = 192; c.height = 240; MilaniDraw.render(c.getContext('2d'), d, 192, 240, null); drawThumb = c.toDataURL('image/jpeg', 0.85); return seed;
+}
+// photos the user put in a box with its camera control: S.boxPics[layoutKey][itemId] = data URL (kept per template + shape, like the layout)
+const boxImgs = new Map(); // data URL → loaded Image
+const boxImg = (d) => { let im = boxImgs.get(d); if (!im) { im = new Image(); im.decoding = 'async'; boxImgs.set(d, im); im.onload = () => setupPreview(); im.src = d; } return im.complete && im.naturalWidth ? im : null; };
+function boxPicsFor(st = S) { const m = (st.boxPics && st.boxPics[layoutKey(st)]) || {}, out = {}; for (const id in m) { const im = boxImg(m[id]); if (im) out[id] = im; } return out; }
+const boxPicOf = (id) => ((S.boxPics[layoutKey()] || {})[id]) || null;
+function setBoxPic(id, d) { const k = layoutKey(), m = (S.boxPics[k] = S.boxPics[k] || {}); if (d) m[id] = d; else delete m[id]; if (!Object.keys(m).length) delete S.boxPics[k]; saveBoxPics(); }
+function saveBoxPics() { const j = JSON.stringify(S.boxPics); if (j.length > 2.5e6) { store.set('grokly.boxpics', ''); return false; } store.set('grokly.boxpics', j); return true; }
 const saveState = () => { const o = {}; SAVE_KEYS.forEach((k) => (o[k] = S[k])); store.set('grokly.settings', JSON.stringify(o)); };
 const RTL = /[֐-ࣿיִ-﷿ﹰ-﻿]/;
 
@@ -627,7 +684,7 @@ function opts(scale) {
   const card = isCard(S.style), [bw, bh] = card ? CARD_SIZE[cardFmt(S.style)] : FMT[S.fmt];
   const ev = (n) => Math.max(2, Math.round((n * scale) / 2) * 2);
   return { style: S.style.replace('card:', ''), title: $('title').value.trim(), sub: $('name').value.trim(), avatar: S.avatar, watermark: wmOn() ? wmText() : '', // Grokly Pass: wmOn()
-    theme: S.bg && luminance(S.bg) > 0.5 ? 'light' : 'dark', paper: S.bg, ink: S.ink, accent: S.acc, font: S.font, textScale: S.textScale, seed: 7, badge: picIsArt() || (S.bgImage && S.style === 'full') ? S.avatar : null, guest: S.guest, guestName: $('guestName').value.trim(), bgImage: S.bgImage, layout: layoutOf(), wmSig: S.wmStyle === 'sig' && SIG ? SIG : null, markLast: true /* the watermark is drawn after the subtitles (drawSubs) */, W: ev(bw), H: ev(bh), keepSize: true,
+    theme: S.bg && luminance(S.bg) > 0.5 ? 'light' : 'dark', paper: S.bg, ink: S.ink, accent: S.acc, font: S.font, textScale: S.textScale, seed: 7, badge: picIsArt() || (S.bgImage && S.style === 'full') ? S.avatar : null, guest: S.guest, guestName: $('guestName').value.trim(), bgImage: S.bgImage, layout: layoutOf(), boxPics: boxPicsFor(), wmSig: S.wmStyle === 'sig' && SIG ? SIG : null, markLast: true /* the watermark is drawn after the subtitles (drawSubs) */, W: ev(bw), H: ev(bh), keepSize: true,
     artShort: scale < 1 ? Math.round(Math.min(bw, bh) * scale) : Math.min(S.style === 'full' ? 1440 : 900, Math.round(Math.min(bw, bh) * scale)) }; // behind a template the artwork is a background: 900 px is plenty and much faster to export
 }
 // Grokly Pass: the checkbox only counts with collector credits; free (or web3-pass.js missing) ⇒ the mark is always on
@@ -752,7 +809,7 @@ const pvSrc = GroklyArt.makeSource(); // the artwork used as the picture in the 
 let setupId = 0;
 const idle = { level: .3, bass: .3, lowMid: .3, mid: .3, high: .2, beat: false, pulse: 0, beats: 0, bands: Array.from({ length: 32 }, (_, i) => .55 * Math.exp(-i / 14) + .1) };
 async function loadFonts() { await Promise.all([S.font, S.subFont].filter((f) => f && !f.includes(',')).flatMap((f) => [400, 700].map((w) => document.fonts.load(`${w} 40px "${f}"`, 'AaĂă').catch(() => {})))); }
-const artTitle = (id) => (GroklyArt.ART.find(([x]) => x === id) || [id, id])[1];
+const artTitle = (id) => (id === 'drawing' ? 'My drawing' : (GroklyArt.ART.find(([x]) => x === id) || [id, id])[1]);
 // the artwork's window: same shape as the video, short side = artShort
 const imgOf = (src) => new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
 async function preparePicture(source, o, st = S) { // st: the live state, or an export job's frozen snapshot
@@ -767,15 +824,17 @@ async function preparePicture(source, o, st = S) { // st: the live state, or an 
 }
 async function setupPreview() {
   const k = kindOf(S.style), my = ++setupId, card = k === 'card';
-  if (pv.kind !== k) { pv.e = eng(pv.cv, k); pv.kind = k; }
+  const ne = pv.kind !== k ? eng(pv.cv, k) : pv.e; // a new kind of design takes over only once it is set up (the idle loop keeps drawing the old one meanwhile)
   const o = opts(0.5);
   if (picIsArt()) { $('artNote').textContent = 'Loading the artwork…'; $('artSeed').disabled = $('genPreview').disabled = $('artBack').disabled = $('artSeedReset').disabled = true; }
-  try { await loadFonts(); o.picture = await preparePicture(pvSrc, o); if (my !== setupId) return; await pv.e.setup(o); }
+  try { await loadFonts(); o.picture = await preparePicture(pvSrc, o); if (my !== setupId) return; await ne.setup(o); if (my === setupId) { pv.e = ne; pv.kind = k; } }
   catch (x) { if (my === setupId && picIsArt()) { $('artNote').textContent = 'This artwork could not start in this browser. Try another one.'; $('artSeed').disabled = $('genPreview').disabled = $('artSeedReset').disabled = false; } return; }
   if (my !== setupId) return;
-  if (picIsArt()) { const sd = artSeedOf(S.pic.id), n = (S.artVers[S.pic.id] || []).indexOf(sd) + 1; $('artNote').textContent = `${artTitle(S.pic.id)} · ${sd === GroklyArt.defaultSeed ? 'original' : 'generated version ' + (n || 1)}`; }
+  if (picIsArt() && S.pic.id === 'drawing') $('artNote').textContent = 'My drawing · it moves with your sound. Press Draw your own to change it.';
+  else if (picIsArt()) { const sd = artSeedOf(S.pic.id), n = (S.artVers[S.pic.id] || []).indexOf(sd) + 1; $('artNote').textContent = `${artTitle(S.pic.id)} · ${sd === GroklyArt.defaultSeed ? 'original' : 'generated version ' + (n || 1)}`; }
   else $('artNote').textContent = 'Your photo is the picture now. Pick an artwork to use it instead.';
   $('genPreview').hidden = !picIsArt(); $('artBack').disabled = !picIsArt() || !(S.artHist[S.pic.id] || []).length; $('artSeed').disabled = $('genPreview').disabled = $('artSeedReset').disabled = false;
+  if (isDrawing()) { $('genPreview').hidden = true; $('artSeed').disabled = $('artBack').disabled = $('artSeedReset').disabled = true; } // a drawing has no generated versions
   document.querySelectorAll('#artGrid .chip').forEach((x) => x.setAttribute('aria-pressed', String(picIsArt() && x.dataset.a === S.pic.id)));
   drawPreview(curFrame());
   $('fmtRow').hidden = card;
@@ -893,6 +952,8 @@ function hitAt(p) { // among the items whose touch box holds the point: the one 
     const d = Math.hypot(Math.max(it.x - p.x, 0, p.x - it.x - it.w), Math.max(it.y - p.y, 0, p.y - it.y - it.h));
     if (!best || d < bd - 0.5 || (Math.abs(d - bd) <= 0.5 && it.w * it.h <= best.w * best.h)) { best = it; bd = d; } }
   return best; }
+// the play button sits over the preview's lower left corner: the camera control keeps off it (canvas pixels)
+function playBox() { const pl = $('play'), r = pl && pl.getBoundingClientRect(), c = pv.cv.getBoundingClientRect(); if (!r || !r.width || !c.width) return null; const k = pv.cv.width / c.width; return { x: (r.left - c.left) * k, y: (r.top - c.top) * k, w: r.width * k, h: r.height * k }; }
 // the × (delete) and the corner handle (scale) of the selected item, in canvas pixels; ≥ 24 CSS px (32 on touch screens)
 function controls(it) {
   const rad = ((coarse ? 32 : 24) / 2) * cssK(), W = pv.cv.width, H = pv.cv.height, cl = (v, a, b) => Math.max(a, Math.min(b, v)), T = tgt(it), g = rad * 0.15, sp = rad * 2.3;
@@ -904,10 +965,15 @@ function controls(it) {
   const withDup = (c) => { if (baseId(it.id) === 'background') return c; const free = (q) => inF(q) && Math.hypot(q.x - c.del.x, q.y - c.del.y) >= sp * 0.95 && Math.hypot(q.x - c.grip.x, q.y - c.grip.y) >= sp * 0.95, L = T.x - rad - g, R = T.x + T.w + rad + g, Tp = T.y - rad - g, B = T.y + T.h + rad + g;
     const cand = [{ x: L, y: T.y + rad }, { x: R, y: T.y + rad }, { x: T.x + rad, y: Tp }, { x: T.x + T.w - rad, y: Tp }, { x: L, y: T.y + T.h - rad }, { x: R, y: T.y + T.h - rad }, { x: T.x + rad, y: B }, { x: T.x + T.w - rad, y: B }].map((q) => ({ x: cl(q.x, rad, W - rad), y: cl(q.y, rad, H - rad) }));
     c.dup = cand.find((q) => outT(q) && free(q)) || [{ x: cl(it.x + rad, rad, W - rad), y: cl(it.y + rad, rad, H - rad) }, { x: c.del.x - sp, y: c.del.y }, { x: c.del.x + sp, y: c.del.y }, { x: c.del.x, y: c.del.y + sp }].map((q) => ({ x: cl(q.x, rad, W - rad), y: cl(q.y, rad, H - rad) })).find(free) || { x: cl(c.del.x - sp, rad, W - rad), y: c.del.y }; return c; };
-  for (const [del, grip] of [col(T.x + T.w + rad + g), col(T.x - rad - g), row(T.y - rad - g), row(T.y + T.h + rad + g)]) if (inF(del) && inF(grip) && outT(del) && outT(grip)) return withDup({ rad, del, grip });
+  // camera (a photo in this box): another free corner, outside the touch box if it can, else inside the item's corners
+  const withCam = (c) => { if (baseId(it.id) === 'subs') return c; const pb = playBox(), taken = [c.del, c.grip, c.dup].filter(Boolean), free = (q) => inF(q) && taken.every((t) => Math.hypot(q.x - t.x, q.y - t.y) >= sp * 0.95) && !(pb && q.x > pb.x - rad && q.x < pb.x + pb.w + rad && q.y > pb.y - rad && q.y < pb.y + pb.h + rad), L = T.x - rad - g, R = T.x + T.w + rad + g, Tp = T.y - rad - g, B = T.y + T.h + rad + g;
+    const out = [{ x: T.x + rad, y: Tp }, { x: T.x + T.w - rad, y: Tp }, { x: R, y: T.y + rad }, { x: R, y: T.y + T.h - rad }, { x: L, y: T.y + rad }, { x: L, y: T.y + T.h - rad }, { x: T.x + rad, y: B }, { x: T.x + T.w - rad, y: B }].map((q) => ({ x: cl(q.x, rad, W - rad), y: cl(q.y, rad, H - rad) }));
+    const ins = [[it.x + rad, it.y + it.h - rad], [it.x + rad, it.y + rad], [it.x + it.w - rad, it.y + it.h - rad], [it.x + it.w / 2, it.y + it.h - rad]].map(([x, y]) => ({ x: cl(x, rad, W - rad), y: cl(y, rad, H - rad) }));
+    c.cam = out.find((q) => outT(q) && free(q)) || ins.find(free) || [{ x: c.del.x, y: c.del.y + sp }, { x: c.del.x - sp, y: c.del.y + sp }, { x: c.del.x - 2 * sp, y: c.del.y }].map((q) => ({ x: cl(q.x, rad, W - rad), y: cl(q.y, rad, H - rad) })).find(free) || null; return c; };
+  for (const [del, grip] of [col(T.x + T.w + rad + g), col(T.x - rad - g), row(T.y - rad - g), row(T.y + T.h + rad + g)]) if (inF(del) && inF(grip) && outT(del) && outT(grip)) return withCam(withDup({ rad, del, grip }));
   // full-frame items: inside the top-right corner
   let dy = cl(it.y + rad, rad, H - rad), gy = cl(it.y + it.h - rad, rad, H - rad); if (gy - dy < sp) { gy = cl(dy + sp, rad, H - rad); dy = gy - sp; }
-  return withDup({ rad, del: { x: cl(it.x + it.w - rad, rad, W - rad), y: dy }, grip: { x: cl(it.x + it.w - rad, rad, W - rad), y: gy } });
+  return withCam(withDup({ rad, del: { x: cl(it.x + it.w - rad, rad, W - rad), y: dy }, grip: { x: cl(it.x + it.w - rad, rad, W - rad), y: gy } }));
 }
 function drawSel() {
   if (!sel || (busy && !BG_EXPORT)) return; const it = hitItems().find((x) => x.id === sel); if (!it) return;
@@ -924,6 +990,10 @@ function drawSel() {
   // + duplicate
   if (c.dup) { g.fillStyle = '#2f7a55'; g.beginPath(); g.arc(c.dup.x, c.dup.y, c.rad * 0.8, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = c.rad * 0.16; g.lineCap = 'round';
     const p2 = c.rad * 0.36; g.beginPath(); g.moveTo(c.dup.x - p2, c.dup.y); g.lineTo(c.dup.x + p2, c.dup.y); g.moveTo(c.dup.x, c.dup.y - p2); g.lineTo(c.dup.x, c.dup.y + p2); g.stroke(); }
+  // camera: put a photo from this device in the box
+  if (c.cam) { const x = c.cam.x, y = c.cam.y, r = c.rad; g.fillStyle = '#5a4a86'; g.beginPath(); g.arc(x, y, r * 0.8, 0, 7); g.fill(); g.strokeStyle = '#fff'; g.lineWidth = r * 0.12; g.lineJoin = 'round';
+    g.beginPath(); g.roundRect(x - r * 0.42, y - r * 0.24, r * 0.84, r * 0.56, r * 0.1); g.moveTo(x - r * 0.15, y - r * 0.24); g.lineTo(x - r * 0.09, y - r * 0.36); g.lineTo(x + r * 0.09, y - r * 0.36); g.lineTo(x + r * 0.15, y - r * 0.24); g.stroke();
+    g.beginPath(); g.arc(x, y + r * 0.04, r * 0.15, 0, 7); g.stroke(); }
   g.restore();
 }
 const near = (p, c, r) => Math.hypot(p.x - c.x, p.y - c.y) <= r;
@@ -944,17 +1014,24 @@ function moveItem(id, nx, ny, box) { // box = the item's box at offset 0 (alread
 function duplicateItem(id) {
   if (!id || baseId(id) === 'background' || !hitItems().some((x) => x.id === id)) return; const L = layoutOf(), b = baseId(id), o = L0(id), W = pv.cv.width, H = pv.cv.height, d = 16 * cssK();
   const n = Math.max(1, ...Object.keys(L).filter((k) => k.startsWith(b + '~')).map((k) => +k.split('~')[1] || 1)) + 1, nid = `${b}~${n}`;
-  L[nid] = { c: 1, x: +((o.x || 0) + d / W).toFixed(4), y: +((o.y || 0) + d / H).toFixed(4), ...(o.s ? { s: o.s } : {}) };
+  L[nid] = { c: 1, x: +((o.x || 0) + d / W).toFixed(4), y: +((o.y || 0) + d / H).toFixed(4), ...(o.s ? { s: o.s } : {}) }; if (boxPicOf(id)) setBoxPic(nid, boxPicOf(id)); // the copy keeps the box's photo
   drag = null; redrawLayout(); const base = baseOf(nid); if (base) clampItem(nid, base); sel = nid; pv.cv.style.touchAction = 'none'; saveState(); layoutChanged(); redrawLayout(); announce(`${itemName(nid)} added and selected`);
 }
-function hideItem(id) { if (isCopy(id)) delete layoutOf()[id]; else setL(id, { hide: true }); sel = null; pv.cv.style.touchAction = 'pan-y'; drag = null; saveState(); layoutChanged(); redrawLayout(); }
+function hideItem(id) { if (isCopy(id)) { delete layoutOf()[id]; if (boxPicOf(id)) { setBoxPic(id, null); setupPreview(); } } else setL(id, { hide: true }); sel = null; pv.cv.style.touchAction = 'pan-y'; drag = null; saveState(); layoutChanged(); redrawLayout(); }
+// camera control: the device's photo picker (on phones also the camera); the photo fills that box, cut to its shape
+function pickBoxPhoto(id) { if (!id || baseId(id) === 'subs') return; camFor = { key: layoutKey(), id }; $('boxFile').click(); }
+$('boxFile').onchange = (e) => { const f = e.target.files[0], to = camFor; e.target.value = ''; camFor = null; if (!f || !to) return;
+  readPicture(f, 1400, (d, w, h) => { if (to.key !== layoutKey()) return; const im = new Image();
+    im.onload = () => { boxImgs.set(d, im); setBoxPic(to.id, d); const ok = saveBoxPics(); photoNote(ok ? '' : 'This photo is too big to remember after a reload.'); selectItem(to.id); announce(`Photo added to ${itemName(to.id).toLowerCase()}`); layoutChanged(); setupPreview(); };
+    im.onerror = () => photoNote("Couldn't open that picture. Try a JPG, PNG or WebP photo."); im.src = d; }); };
+$('boxPicRemove').onclick = () => { if (!sel) return; setBoxPic(sel, null); $('boxPicRemove').hidden = true; layoutChanged(); setupPreview(); };
 const redrawLayout = () => { if (pv.e && pv.e.items !== undefined) drawPreview(src ? curFrame() : lastI); };
 pv.cv.tabIndex = 0; pv.cv.setAttribute('aria-roledescription', 'editable preview');
 pv.cv.setAttribute('aria-label', 'Preview. Press Enter to select an item, Tab to go to the next item, arrows to move, plus and minus to resize, D to duplicate, Delete to hide, Escape to finish.');
 const coarse = matchMedia('(pointer: coarse)').matches;
 const pvTitle = coarse ? 'Tap an item to select it, then drag, pinch or use its × (delete), + (duplicate) and corner handle.' : 'Drag anything to move it. Select it to delete (×), duplicate (+) or resize (corner handle). Arrow keys move, + and − resize, D duplicates, Delete hides.'; pv.cv.title = pvTitle;
 const announce = (t) => { $('pvLive').textContent = t; };
-const selectItem = (id) => { sel = id; pv.cv.style.touchAction = sel ? 'none' : 'pan-y'; if (id) announce(`${itemName(id)} selected`); redrawLayout(); };
+const selectItem = (id) => { sel = id; $('boxPicRemove').hidden = !(id && boxPicOf(id)); pv.cv.style.touchAction = sel ? 'none' : 'pan-y'; if (id) announce(`${itemName(id)} selected`); redrawLayout(); };
 // keep each item wholly inside the frame (the background: ~80 %), text within the frame margins, and text off the watermark
 const TEXT_IDS = ['title', 'name', 'subs', 'chip'];
 function clampItem(id, base) { // base = the item's box at offset 0 and scale 1
@@ -969,6 +1046,7 @@ function clampItem(id, base) { // base = the item's box at offset 0 and scale 1
   setL(id, { s: +k.toFixed(3), x: +((cx - bx) / W).toFixed(4), y: +((cy - by) / H).toFixed(4) });
 }
 const baseOf = (id) => { const it = hitItems().find((x) => x.id === id); if (!it) return null; const o = L0(id), k = o.s || 1, W = pv.cv.width, H = pv.cv.height, cx = it.x + it.w / 2 - (o.x || 0) * W, cy = it.y + it.h / 2 - (o.y || 0) * H; return { x: cx - it.w / k / 2, y: cy - it.h / k / 2, w: it.w / k, h: it.h / k }; };
+let camTap = null, camFor = null; // the camera control was pressed / the box waiting for its photo
 const pts = new Map(); // active pointers (two fingers = pinch to resize the selected item)
 let tap = null; // touch: a tap selects; a swipe on the preview scrolls the page (nothing moves until an item is selected)
 pv.cv.style.touchAction = 'pan-y';
@@ -980,7 +1058,8 @@ pv.cv.addEventListener('pointerdown', (ev) => {
   if (cur) { const c = controls(cur);
     if (near(p, c.grip, c.rad)) { ev.preventDefault(); pv.cv.setPointerCapture(ev.pointerId); const cx = cur.x + cur.w / 2, cy = cur.y + cur.h / 2; drag = { mode: 'scale', id: sel, cx, cy, d0: Math.max(4, Math.hypot(p.x - cx, p.y - cy)), s0: L0(sel).s || 1, base: baseOf(sel), moved: false }; return; }
     if (near(p, c.del, c.rad)) { ev.preventDefault(); return hideItem(sel); }
-    if (c.dup && near(p, c.dup, c.rad)) { ev.preventDefault(); return duplicateItem(sel); } }
+    if (c.dup && near(p, c.dup, c.rad)) { ev.preventDefault(); return duplicateItem(sel); }
+    if (c.cam && near(p, c.cam, c.rad)) { ev.preventDefault(); camTap = { id: sel, pid: ev.pointerId }; return; } }
   const it = hitAt(p);
   if (ev.pointerType === 'touch' && (!it || it.id !== sel)) { tap = { p, id: it ? it.id : null, t: performance.now() }; return; } // let the browser scroll; decide on pointerup
   ev.preventDefault(); pv.cv.setPointerCapture(ev.pointerId);
@@ -993,7 +1072,7 @@ pv.cv.addEventListener('pointerdown', (ev) => {
 pv.cv.addEventListener('pointermove', (ev) => {
   const p = canvasPt(ev); if (pts.has(ev.pointerId)) pts.set(ev.pointerId, p);
   if (tap && Math.hypot(p.x - tap.p.x, p.y - tap.p.y) > 12) tap = null; // it became a swipe
-  if (!drag) { let cur = 'default'; if (!busy || BG_EXPORT) { const it = sel && hitItems().find((x) => x.id === sel), c = it && controls(it); const onDup = c && c.dup && near(p, c.dup, c.rad); cur = c && near(p, c.grip, c.rad) ? 'nwse-resize' : (c && near(p, c.del, c.rad)) || onDup ? 'pointer' : hitAt(p) ? 'move' : 'default'; pv.cv.title = onDup ? 'Duplicate' : pvTitle; } pv.cv.style.cursor = cur; return; }
+  if (!drag) { let cur = 'default'; if (!busy || BG_EXPORT) { const it = sel && hitItems().find((x) => x.id === sel), c = it && controls(it); const onDup = c && c.dup && near(p, c.dup, c.rad), onCam = c && c.cam && near(p, c.cam, c.rad); cur = c && near(p, c.grip, c.rad) ? 'nwse-resize' : (c && near(p, c.del, c.rad)) || onDup || onCam ? 'pointer' : hitAt(p) ? 'move' : 'default'; pv.cv.title = onDup ? 'Duplicate' : onCam ? 'Add a photo to this box' : pvTitle; } pv.cv.style.cursor = cur; return; }
   const W = pv.cv.width, H = pv.cv.height;
   if (drag.mode === 'pinch') { if (pts.size < 2) return; const [a, b] = [...pts.values()]; setL(drag.id, { s: Math.max(SMIN, Math.min(SMAX, (drag.s0 * Math.hypot(a.x - b.x, a.y - b.y)) / Math.max(4, drag.d0))) }); }
   else if (drag.mode === 'scale') { drag.moved = true; setL(drag.id, { s: +Math.max(SMIN, Math.min(SMAX, (drag.s0 * Math.hypot(p.x - drag.cx, p.y - drag.cy)) / drag.d0)).toFixed(3) }); }
@@ -1002,6 +1081,7 @@ pv.cv.addEventListener('pointermove', (ev) => {
 });
 const endDrag = (ev) => {
   pts.delete(ev.pointerId);
+  if (camTap) { const t = camTap; camTap = null; if (ev.type === 'pointerup' && t.pid === ev.pointerId) pickBoxPhoto(t.id); return; }
   if (tap && ev.type === 'pointerup') { const t = tap; tap = null; selectItem(t.id); return; }
   tap = null; if (!drag || (drag.mode === 'pinch' && pts.size)) return; const moved = drag.moved; drag = null; pv.cv.classList.remove('dragging'); if (moved) { saveState(); layoutChanged(); } redrawLayout();
 };
@@ -1013,7 +1093,8 @@ pv.cv.addEventListener('keydown', (ev) => {
   if (ev.key === 'Escape') { selectItem(null); return announce('Done editing'); }
   if (ev.key === 'Tab') { ev.preventDefault(); const i = ids.indexOf(sel); return selectItem(ids[(i + (ev.shiftKey ? -1 : 1) + ids.length) % ids.length]); }
   if (ev.key === 'Delete' || ev.key === 'Backspace') { ev.preventDefault(); announce(`${itemName(sel)} ${isCopy(sel) ? 'deleted' : 'hidden'}`); return hideItem(sel); }
-  if ((ev.key === 'd' || ev.key === 'D') && !ev.altKey) { ev.preventDefault(); return duplicateItem(sel); } // D (or Ctrl/⌘+D): duplicate
+  if ((ev.key === 'd' || ev.key === 'D') && !ev.altKey) { ev.preventDefault(); return duplicateItem(sel); }
+  if ((ev.key === 'c' || ev.key === 'C') && !ev.altKey && !ev.ctrlKey && !ev.metaKey && baseId(sel) !== 'subs') { ev.preventDefault(); return pickBoxPhoto(sel); } // C: a photo in this box // D (or Ctrl/⌘+D): duplicate
   const base = baseOf(sel);
   if (ev.key === '+' || ev.key === '=' || ev.key === '-') { ev.preventDefault(); setL(sel, { s: Math.max(SMIN, Math.min(SMAX, (L0(sel).s || 1) * (ev.key === '-' ? 1 / 1.08 : 1.08))) }); clampItem(sel, base); saveState(); layoutChanged(); return redrawLayout(); }
   if (!/^Arrow/.test(ev.key)) return;
@@ -1024,12 +1105,12 @@ pv.cv.addEventListener('keydown', (ev) => {
 // hidden items can be brought back one by one, or all at once; Reset layout restores positions, sizes and hidden items
 function layoutChanged() {
   const L = S.layout[layoutKey()] || {}, hidden = Object.keys(L).filter((k) => L[k].hide), box = $('hiddenList');
-  $('resetLayout').hidden = !Object.keys(L).length; box.hidden = !hidden.length; box.textContent = '';
+  $('resetLayout').hidden = !Object.keys(L).length && !S.boxPics[layoutKey()]; box.hidden = !hidden.length; box.textContent = '';
   if (!hidden.length) return; box.append('Hidden: ');
   for (const id of hidden) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = `Show ${itemName(id).toLowerCase()}`; b.onclick = () => { setL(id, { hide: false }); saveState(); layoutChanged(); redrawLayout(); }; box.append(b); }
   if (hidden.length > 1) { const b = document.createElement('button'); b.className = 'btn small'; b.textContent = 'Restore all'; b.onclick = () => { for (const id of hidden) setL(id, { hide: false }); saveState(); layoutChanged(); redrawLayout(); }; box.append(b); }
 }
-$('resetLayout').onclick = () => { delete S.layout[layoutKey()]; sel = null; saveState(); layoutChanged(); setupPreview(); };
+$('resetLayout').onclick = () => { delete S.layout[layoutKey()]; if (S.boxPics[layoutKey()]) { delete S.boxPics[layoutKey()]; saveBoxPics(); } $('boxPicRemove').hidden = true; sel = null; saveState(); layoutChanged(); setupPreview(); };
 let ac = null, src = null, t0 = 0, raf = 0;
 let idleI = 0, idleNext = 0;
 function idleTick(ts) {
@@ -1091,7 +1172,7 @@ async function buildChips() {
   }
   const sample = { ...idle, pulse: .5, bands: idle.bands.map((b, i) => Math.min(1, b + .35 * Math.abs(Math.sin(i * 1.3)))) };
   const tw = document.createElement('canvas'), tc = document.createElement('canvas'), tf = document.createElement('canvas'), ew = E.makeWave(tw), ec = E.makeCards(tc), ef = GroklyArt.makeFull(tf);
-  const thumbPic = picIsArt() ? `art/_thumbs/${S.pic.id}.jpg` : S.avatar;
+  const thumbPic = isDrawing() ? drawThumb : picIsArt() ? `art/_thumbs/${S.pic.id}.jpg` : S.avatar;
   for (const b of document.querySelectorAll('.styles .chip')) {
     const id = b.dataset.s, card = isCard(id), e = card ? ec : id === 'full' ? ef : ew, cv = card ? tc : id === 'full' ? tf : tw, sz = card ? CARD_SIZE[cardFmt(id)] : FMT.post;
     await e.setup({ style: id.replace('card:', ''), title: 'The Sound of Rain', sub: 'Subtitle', avatar: id === 'full' ? thumbPic : S.avatar, bgImage: picIsArt() ? thumbPic : S.bgImage, guest: S.guest, theme: S.bg && luminance(S.bg) > 0.5 ? 'light' : 'dark', paper: S.bg, ink: S.ink, accent: S.acc, W: sz[0] / 4, H: sz[1] / 4, keepSize: true, seed: 7, watermark: '' });
@@ -1108,6 +1189,11 @@ function buildArtChips() {
   // three groups; any artwork not listed in a group goes to the last one
   const listed = ART_GROUPS.flatMap((g) => g[1]), all = GroklyArt.ART.map(([x]) => x);
   const groups = ART_GROUPS.map(([n, ids], i) => [n, ids.filter((x) => all.includes(x)).concat(i === ART_GROUPS.length - 1 ? all.filter((x) => !listed.includes(x)) : [])]);
+  { // Draw your own: the pen opens the editor; the visitor's drawing (once made) is an artwork like the others
+    const h = document.createElement('div'); h.className = 'artcat'; h.textContent = 'Your own'; box.append(h);
+    const b = document.createElement('button'); b.className = 'chip draw'; b.title = 'Draw your own picture'; b.innerHTML = '<span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 20l1.2-4.6L15.6 5a2 2 0 012.8 0l.6.6a2 2 0 010 2.8L8.6 18.8z"/><path d="M13.8 6.8l3.4 3.4"/><path d="M4 20l4.6-1.2"/></svg></span><span>Draw your own</span>'; b.onclick = () => openPaint(); box.append(b);
+    if (S.drawing && drawThumb) { const c = document.createElement('button'); c.className = 'chip'; c.dataset.a = 'drawing'; c.setAttribute('aria-pressed', String(isDrawing())); const im = document.createElement('img'); im.src = drawThumb; im.alt = ''; const l = document.createElement('span'); l.textContent = 'My drawing'; c.append(im, l); c.onclick = () => pickArt('drawing'); box.append(c); }
+  }
   for (const [gname, ids] of groups) {
    if (!ids.length) continue;
    const h = document.createElement('div'); h.className = 'artcat'; h.textContent = gname; box.append(h);
@@ -1133,14 +1219,15 @@ $('usePhoto').onclick = usePhoto;
 // History holds each seed once (most recent last), so Back never visits the original twice; versions are numbered in the order they were generated.
 const pushHist = (id, seed) => { const h = (S.artHist[id] = (S.artHist[id] || []).filter((x) => x !== seed)); h.push(seed); if (h.length > 30) h.shift(); };
 function generateArt() {
+  if (isDrawing()) return openPaint();
   if (!picIsArt()) { const arts = GroklyArt.ART.map(([x]) => x); S.pic = { kind: 'art', id: arts.includes(S.lastArt) ? S.lastArt : arts[0] }; S.lastArt = S.pic.id; store.set('grokly.pic', S.pic.id); buildChips(); }
   const id = S.pic.id, seed = GroklyArt.randomSeed(); pushHist(id, artSeedOf(id));
   (S.artVers[id] = S.artVers[id] || []).push(seed); if (S.artVers[id].length > 60) S.artVers[id].shift();
   S.artSeeds[id] = seed; setupPreview();
 }
 $('artSeed').onclick = generateArt; $('genPreview').onclick = generateArt;
-$('artBack').onclick = () => { if (!picIsArt()) return; const id = S.pic.id, h = S.artHist[id]; if (!h || !h.length) return; S.artSeeds[id] = h.pop(); setupPreview(); };
-$('artSeedReset').onclick = () => { if (!picIsArt()) return; const id = S.pic.id; if (artSeedOf(id) !== GroklyArt.defaultSeed) pushHist(id, artSeedOf(id)); S.artHist[id] = (S.artHist[id] || []).filter((x) => x !== GroklyArt.defaultSeed); S.artSeeds[id] = GroklyArt.defaultSeed; setupPreview(); };
+$('artBack').onclick = () => { if (!picIsArt() || isDrawing()) return; const id = S.pic.id, h = S.artHist[id]; if (!h || !h.length) return; S.artSeeds[id] = h.pop(); setupPreview(); };
+$('artSeedReset').onclick = () => { if (!picIsArt() || isDrawing()) return; const id = S.pic.id; if (artSeedOf(id) !== GroklyArt.defaultSeed) pushHist(id, artSeedOf(id)); S.artHist[id] = (S.artHist[id] || []).filter((x) => x !== GroklyArt.defaultSeed); S.artSeeds[id] = GroklyArt.defaultSeed; setupPreview(); };
 segGroup('subPos', 'v', (v) => { S.subPos = v; drawPreview(curFrame()); saveState(); });
 segGroup('subLook', 'v', (v) => { S.subLook = v; subCheck = v === 'plain' ? false : true; drawPreview(curFrame()); saveState(); });
 segGroup('quality', 'q', (v) => { S.q = +v; saveState(); });
@@ -1490,6 +1577,73 @@ async function runJob(J) {
   finally { busy = false; job = null; lockEdit(false); $('bar').hidden = true; holdAwake(false); try { rtCtx.close && rtCtx.close().catch(() => {}); } catch {} xs.destroy(); if (snap.mvMix) snap.mvMix.destroy(); }
 }
 
+// ---------- Draw your own: a small paint editor; Done makes the drawing the artwork (art/drawing), moving with the sound ----------
+const PAINT_COLS = ['#ffffff', '#15252c', '#e2614f', '#ffd166', '#6cc0d6', '#2f7a55', '#b388eb', '#ff8fb1'];
+const PT = { strokes: [], undo: [], col: '#ffffff', size: 8, tool: 'pen', paper: '#0c0c0d', aspect: 0.8, cw: 0, ch: 0, cur: null, pid: null, last: null };
+function paintCols() {
+  const box = $('paintCols'); box.innerHTML = '';
+  for (const c of PAINT_COLS) { const b = document.createElement('button'); b.style.background = c; b.dataset.c = c; b.title = COLOR_NAMES[c] || c; b.setAttribute('aria-label', COLOR_NAMES[c] || c); b.onclick = () => paintCol(c); box.append(b); }
+  const l = document.createElement('label'); l.title = 'Any colour'; const i = document.createElement('input'); i.type = 'color'; i.value = '#ff6b3d'; i.setAttribute('aria-label', 'Any colour'); i.oninput = () => paintCol(i.value, true); l.append(i); box.append(l);
+  paintCol(PT.col);
+}
+function paintCol(c, custom) { PT.col = c; if (PT.tool !== 'pen') paintTool('pen'); const box = $('paintCols'); for (const b of box.querySelectorAll('button')) b.setAttribute('aria-pressed', String(!custom && b.dataset.c === c)); box.querySelector('label').classList.toggle('on', !!custom || !PAINT_COLS.includes(c)); paintDot(); }
+function paintTool(t) { PT.tool = t; setSeg('paintTool', 't', t); $('paintCv').style.cursor = t === 'eraser' ? 'cell' : 'crosshair'; paintDot(); }
+function paintDot() { const d = $('paintDot'), s = Math.max(4, Math.min(30, PT.size)); d.style.width = d.style.height = s + 'px'; d.style.background = PT.tool === 'eraser' ? 'transparent' : PT.col; d.style.border = PT.tool === 'eraser' ? '1.5px dashed #eee8e1' : '0'; }
+function paintFit() { // the drawing area: the video's shape (the Full picture design), as big as the screen allows
+  const st = $('paintStage'), r = st.getBoundingClientRect(), a = PT.aspect, w = Math.max(60, Math.min(r.width, r.height * a)), h = w / a, dpr = Math.min(2, window.devicePixelRatio || 1), cv = $('paintCv');
+  PT.cw = w; PT.ch = h; cv.style.width = w + 'px'; cv.style.height = h + 'px'; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); paintDraw();
+}
+const paintData = () => ({ v: 1, paper: PT.paper, aspect: PT.aspect, strokes: PT.strokes });
+function paintDraw() { const cv = $('paintCv'), g = cv.getContext('2d'); MilaniDraw.render(g, { ...paintData(), strokes: PT.cur ? [...PT.strokes, PT.cur] : PT.strokes }, cv.width, cv.height, null); $('paintUndo').disabled = !PT.undo.length; }
+const paintSnap = () => { PT.undo.push(JSON.stringify(PT.strokes)); if (PT.undo.length > 60) PT.undo.shift(); };
+const paintPt = (ev) => { const r = $('paintCv').getBoundingClientRect(); return { x: (ev.clientX - r.left) / r.width, y: (ev.clientY - r.top) / r.height }; };
+const r4 = (v) => Math.round(v * 1e4) / 1e4;
+function paintAdd(q) { // points every ~2.5 CSS px, so the eraser can cut anywhere along a stroke
+  const p = PT.cur.p, lx = p[p.length - 2], ly = p[p.length - 1], dx = (q.x - lx) * PT.cw, dy = (q.y - ly) * PT.ch, d = Math.hypot(dx, dy); if (d < 2) return;
+  const n = Math.ceil(d / 6); for (let i = 1; i <= n; i++) p.push(r4(lx + ((q.x - lx) * i) / n), r4(ly + ((q.y - ly) * i) / n));
+}
+function paintErase(q) { // the eraser cuts the strokes it touches (they stay vector lines, so they keep moving with the sound)
+  const R = Math.max(7, PT.size * 0.9), out = [];
+  for (const s of PT.strokes) { const half = (s.w * PT.ch) / 2; let cur = [];
+    const flush = () => { if (cur.length >= 2) out.push({ c: s.c, w: s.w, p: cur }); cur = []; };
+    for (let k = 0; k + 1 < s.p.length; k += 2) { if (Math.hypot((s.p[k] - q.x) * PT.cw, (s.p[k + 1] - q.y) * PT.ch) <= R + half * 0.5) flush(); else cur.push(s.p[k], s.p[k + 1]); }
+    flush(); }
+  PT.strokes = out;
+}
+function paintEraseTo(q) { const a = PT.last || q, n = Math.max(1, Math.ceil(Math.hypot((q.x - a.x) * PT.cw, (q.y - a.y) * PT.ch) / 4)); for (let i = 1; i <= n; i++) paintErase({ x: a.x + ((q.x - a.x) * i) / n, y: a.y + ((q.y - a.y) * i) / n }); PT.last = q; }
+{ const cv = $('paintCv');
+  cv.addEventListener('pointerdown', (ev) => { if (PT.pid != null) return; ev.preventDefault(); cv.setPointerCapture(ev.pointerId); PT.pid = ev.pointerId; const q = paintPt(ev); paintSnap();
+    if (PT.tool === 'eraser') { PT.last = null; paintEraseTo(q); } else PT.cur = { c: PT.col, w: r4(PT.size / PT.ch), p: [r4(q.x), r4(q.y)] }; paintDraw(); });
+  cv.addEventListener('pointermove', (ev) => { if (ev.pointerId !== PT.pid) return; const es = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
+    for (const e of es.length ? es : [ev]) { const q = paintPt(e); if (PT.tool === 'eraser') paintEraseTo(q); else if (PT.cur) paintAdd(q); } paintDraw(); });
+  const up = (ev) => { if (ev.pointerId !== PT.pid) return; PT.pid = null; PT.last = null; if (PT.cur) { PT.strokes.push(PT.cur); PT.cur = null; } else if (PT.tool === 'eraser' && PT.undo.length && PT.undo[PT.undo.length - 1] === JSON.stringify(PT.strokes)) PT.undo.pop(); paintDraw(); };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); }
+segGroup('paintTool', 't', (t) => paintTool(t));
+segGroup('paintPaper', 'p', (p) => { PT.paper = p; if (PT.col === p) paintCol(p === '#0c0c0d' ? '#ffffff' : '#15252c'); paintDraw(); });
+$('paintSize').oninput = (e) => { PT.size = +e.target.value; paintDot(); };
+$('paintUndo').onclick = () => { if (!PT.undo.length) return; PT.strokes = JSON.parse(PT.undo.pop()); paintDraw(); };
+$('paintClear').onclick = () => { if (!PT.strokes.length) return; paintSnap(); PT.strokes = []; paintDraw(); };
+let paintBack = null;
+function openPaint() {
+  const [bw, bh] = FMT[S.fmt] || FMT.post, d = S.drawing; PT.aspect = d ? d.aspect : bw / bh; PT.strokes = d ? JSON.parse(JSON.stringify(d.strokes)) : []; PT.paper = d ? d.paper : '#0c0c0d'; PT.undo = []; PT.cur = null; PT.pid = null;
+  setSeg('paintPaper', 'p', PT.paper); paintTool('pen'); paintCols(); paintBack = document.activeElement;
+  $('paint').hidden = false; document.body.style.overflow = 'hidden'; requestAnimationFrame(paintFit); $('paintDone').focus({ preventScroll: true });
+}
+function closePaint() { $('paint').hidden = true; document.body.style.overflow = ''; if (paintBack && paintBack.focus) paintBack.focus({ preventScroll: true }); }
+addEventListener('resize', () => { if (!$('paint').hidden) paintFit(); });
+$('paint').addEventListener('keydown', (ev) => { if (ev.key === 'Escape') { ev.preventDefault(); closePaint(); } if ((ev.key === 'z' || ev.key === 'Z') && (ev.ctrlKey || ev.metaKey)) { ev.preventDefault(); $('paintUndo').click(); } });
+$('paintCancel').onclick = closePaint;
+$('paintDone').onclick = () => {
+  const d = MilaniDraw.clean(paintData()); closePaint();
+  if (!d || !d.strokes.length) { if (isDrawing()) usePhoto(); S.drawing = null; store.set('grokly.drawing', ''); buildArtChips(); return; }
+  useDrawing(d); const j = JSON.stringify(d); if (j.length < 1.5e6) store.set('grokly.drawing', j);
+  if (mvOn()) setMode('voice', true); // a music video cuts between Milani's artworks; the drawing plays as one picture
+  S.pic = { kind: 'art', id: 'drawing' }; idleI = 0; store.set('grokly.pic', 'drawing'); buildArtChips();
+  if (S.style !== 'full') selectStyle('full'); else setupPreview(); // the drawing fills the frame; any other template can still be picked
+  buildChips(); uiSound('surprise');
+};
+$('drawOpen').onclick = openPaint;
+
 // ---------- start ----------
 (async () => {
   { const L = { fa: 'persian', ar: 'arabic', tr: 'turkish', ur: 'urdu', es: 'spanish', fr: 'french', de: 'german', it: 'italian', pt: 'portuguese', ru: 'russian', hi: 'hindi', zh: 'chinese', ja: 'japanese', ko: 'korean' };
@@ -1513,7 +1667,10 @@ async function runJob(J) {
   const all = [...CARDS.map(([n]) => 'card:' + n), ...WAVES], arts = GroklyArt.ART.map(([id]) => id);
   let st = store.get('grokly.style'); if (st && st.startsWith('art:')) { store.set('grokly.pic', st.slice(4)); st = 'full'; }
   if (st && all.includes(st)) S.style = st;
-  const sp = store.get('grokly.pic'); if (sp && arts.includes(sp)) S.pic = { kind: 'art', id: sp };
+  { let d = null; try { d = MilaniDraw.clean(JSON.parse(store.get('grokly.drawing') || 'null')); } catch {} if (d && d.strokes.length) useDrawing(d); } // Draw your own
+  try { const v = JSON.parse(store.get('grokly.boxpics') || '{}'); if (v && typeof v === 'object') for (const k in v) { const m = v[k]; if (!m || typeof m !== 'object') continue; for (const id in m) if (/^data:image\/(jpeg|png|webp);base64,/.test(m[id] || '')) (S.boxPics[k] = S.boxPics[k] || {})[id] = m[id]; } } catch {}
+  await Promise.all(Object.values(S.boxPics).flatMap((m) => Object.values(m)).map((d) => new Promise((r) => { const im = new Image(); im.onload = () => { boxImgs.set(d, im); r(); }; im.onerror = r; im.src = d; })));
+  const sp = store.get('grokly.pic'); if (sp && (arts.includes(sp) || (sp === 'drawing' && S.drawing))) S.pic = { kind: 'art', id: sp };
   const qa = new URLSearchParams(location.search).get('art'); if (qa && arts.includes(qa)) S.pic = { kind: 'art', id: qa };
   const q = new URLSearchParams(location.search).get('style'); if (q) { const m = all.includes('card:' + q) ? 'card:' + q : all.includes(q) ? q : null; if (m) S.style = m; }
   const tab = store.get('grokly.tab'); if (tab && $('p-' + tab)) document.querySelector(`.tools [data-p="${tab}"]`).click();

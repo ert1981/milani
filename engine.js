@@ -212,9 +212,9 @@ function makeWave(cv) { const api = {};
   // o = { x, y: offset as a fraction of W / H, s: scale around the item's centre, hide: true when the user deleted it }
   const CTX_P = ['font', 'textAlign', 'textBaseline', 'direction', 'globalAlpha', 'fillStyle', 'strokeStyle', 'lineWidth', 'lineCap', 'lineJoin', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalCompositeOperation', 'filter', 'imageSmoothingEnabled'];
   let copies = []; const flushCopies = () => { const q = copies; copies = []; q.forEach((d) => d()); };
-  function item(id, box, fn) {
+  function item(id, box, fn, shape) { // shape: the item's own outline (a path), for a photo put in this box with its camera control
     const L = O.layout || {}, one = (k, o, done) => { const dx = o && o.x ? o.x * W : 0, dy = o && o.y ? o.y * H : 0, k2 = o && o.s ? o.s : 1, cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
-      g.save(); if (done) done(); if (dx || dy || k2 !== 1) { g.translate(cx + dx, cy + dy); if (k2 !== 1) g.scale(k2, k2); g.translate(-cx, -cy); } fn(); g.restore();
+      g.save(); if (done) done(); if (dx || dy || k2 !== 1) { g.translate(cx + dx, cy + dy); if (k2 !== 1) g.scale(k2, k2); g.translate(-cx, -cy); } const bp = O.boxPics && O.boxPics[k]; if (bp && bp.width) boxPic(bp, box, shape); else fn(); g.restore();
       items.push({ id: k, x: cx + dx - (box[2] * k2) / 2, y: cy + dy - (box[3] * k2) / 2, w: box[2] * k2, h: box[3] * k2 }); };
     const o0 = L[id] || null; if (!(o0 && o0.hide)) one(id, o0);
     // the user's copies ("<id>~<n>", made with its + control): drawn over everything at the end of the frame, with the canvas state of this moment
@@ -222,6 +222,8 @@ function makeWave(cv) { const api = {};
   }
   function ctxState() { const s = { m: g.getTransform() }; for (const p of CTX_P) s[p] = g[p]; return s; }
   function ctxSet(s) { g.setTransform(s.m); for (const p of CTX_P) g[p] = s[p]; }
+  // the user's own photo in a box (its camera control): it fills the box, cut to the item's outline (else its rectangle), like object-fit: cover
+  function boxPic(im, b, shape) { g.save(); g.globalAlpha = 1; g.filter = 'none'; g.shadowBlur = 0; g.beginPath(); if (shape) shape(); else g.rect(b[0], b[1], b[2], b[3]); g.clip(); const s = Math.max(b[2] / im.width, b[3] / im.height); g.drawImage(im, b[0] + (b[2] - im.width * s) / 2, b[1] + (b[3] - im.height * s) / 2, im.width * s, im.height * s); g.restore(); }
   function disc(im, cx, cy, r, glow) {
     if (!im) { g.fillStyle = accent; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); return; }
     g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.clip(); cover(im, cx - r, cy - r, 2 * r, 2 * r); g.restore();
@@ -232,8 +234,8 @@ function makeWave(cv) { const api = {};
   function badge(cx, cy, r, f) {
     const u = Math.min(W, H) / 1080, two = !!guestImg, rr2 = two ? r * 0.8 : r, hx = two ? cx - r * 0.88 : cx, gx = cx + r * 0.88;
     const lab = (t, x) => { if (!t) return; g.save(); g.fillStyle = ink; g.textAlign = 'center'; g.font = `600 ${26 * u}px ${FONT()}`; fit(t, x, cy + rr2 + 44 * u, rr2 * 2.2); g.restore(); };
-    item('photo', [hx - rr2, cy - rr2, 2 * rr2, 2 * rr2], () => { disc(avatar, hx, cy, rr2, two && api_speaker() === 'host'); if (two) lab(O.sub, hx); });
-    if (two) item('guest', [gx - rr2, cy - rr2, 2 * rr2, 2 * rr2], () => { disc(guestImg, gx, cy, rr2, api_speaker() === 'guest'); lab(O.guestName, gx); });
+    item('photo', [hx - rr2, cy - rr2, 2 * rr2, 2 * rr2], () => { disc(avatar, hx, cy, rr2, two && api_speaker() === 'host'); if (two) lab(O.sub, hx); }, () => g.arc(hx, cy, rr2, 0, 7));
+    if (two) item('guest', [gx - rr2, cy - rr2, 2 * rr2, 2 * rr2], () => { disc(guestImg, gx, cy, rr2, api_speaker() === 'guest'); lab(O.guestName, gx); }, () => g.arc(gx, cy, rr2, 0, 7));
   }
   const api_speaker = () => api.speaker;
   // free-tier watermark (founder): the signature ABOVE "Made with Milani". It is drawn LAST, over everything: with O.markLast the
@@ -430,9 +432,9 @@ function makeCards(cv) { const api = {};
   // o = { x, y: offset as a fraction of W / H, s: scale around the item's centre, hide: true when the user deleted it }
   const CTX_P = ['font', 'textAlign', 'textBaseline', 'direction', 'globalAlpha', 'fillStyle', 'strokeStyle', 'lineWidth', 'lineCap', 'lineJoin', 'shadowColor', 'shadowBlur', 'shadowOffsetX', 'shadowOffsetY', 'globalCompositeOperation', 'filter', 'imageSmoothingEnabled'];
   let copies = []; const flushCopies = () => { const q = copies; copies = []; q.forEach((d) => d()); };
-  function item(id, box, fn) {
+  function item(id, box, fn, shape) { // shape: the item's own outline (a path), for a photo put in this box with its camera control
     const L = O.layout || {}, one = (k, o, done) => { const dx = o && o.x ? o.x * W : 0, dy = o && o.y ? o.y * H : 0, k2 = o && o.s ? o.s : 1, cx = box[0] + box[2] / 2, cy = box[1] + box[3] / 2;
-      g.save(); if (done) done(); if (dx || dy || k2 !== 1) { g.translate(cx + dx, cy + dy); if (k2 !== 1) g.scale(k2, k2); g.translate(-cx, -cy); } fn(); g.restore();
+      g.save(); if (done) done(); if (dx || dy || k2 !== 1) { g.translate(cx + dx, cy + dy); if (k2 !== 1) g.scale(k2, k2); g.translate(-cx, -cy); } const bp = O.boxPics && O.boxPics[k]; if (bp && bp.width) boxPic(bp, box, shape); else fn(); g.restore();
       items.push({ id: k, x: cx + dx - (box[2] * k2) / 2, y: cy + dy - (box[3] * k2) / 2, w: box[2] * k2, h: box[3] * k2 }); };
     const o0 = L[id] || null; if (!(o0 && o0.hide)) one(id, o0);
     // the user's copies ("<id>~<n>", made with its + control): drawn over everything at the end of the frame, with the canvas state of this moment
@@ -440,6 +442,8 @@ function makeCards(cv) { const api = {};
   }
   function ctxState() { const s = { m: g.getTransform() }; for (const p of CTX_P) s[p] = g[p]; return s; }
   function ctxSet(s) { g.setTransform(s.m); for (const p of CTX_P) g[p] = s[p]; }
+  // the user's own photo in a box (its camera control): it fills the box, cut to the item's outline (else its rectangle), like object-fit: cover
+  function boxPic(im, b, shape) { g.save(); g.globalAlpha = 1; g.filter = 'none'; g.shadowBlur = 0; g.beginPath(); if (shape) shape(); else g.rect(b[0], b[1], b[2], b[3]); g.clip(); const s = Math.max(b[2] / im.width, b[3] / im.height); g.drawImage(im, b[0] + (b[2] - im.width * s) / 2, b[1] + (b[3] - im.height * s) / 2, im.width * s, im.height * s); g.restore(); }
   function cover(im, x, y, w, h) { if (!im || !im.width) return; const s = Math.max(w / im.width, h / im.height); g.drawImage(im, x + (w - im.width * s) / 2, y + (h - im.height * s) / 2, im.width * s, im.height * s); }
   function img(x, y, w, h, clip, im = photo) { g.save(); if (clip) { clip(); g.clip(); } cover(im, x, y, w, h); g.restore(); }
   // the card's base: its colour, then the artwork / background image over the whole frame
@@ -451,14 +455,14 @@ function makeCards(cv) { const api = {};
   function photoRect(x, y, w, h, fill, clip, hostLabel = true) { // hostLabel false: the template already shows the host's name nearby
     item('photo', [x, y, w, h], () => { g.fillStyle = fill; if (clip) { clip(); g.fill(); } else g.fillRect(x, y, w, h); img(x, y, w, h, clip || (() => { g.beginPath(); g.rect(x, y, w, h); }));
       if (glow('host')) { g.save(); g.strokeStyle = ACC('#ffd166'); g.lineWidth = 10 * u; g.shadowColor = ACC('#ffd166'); g.shadowBlur = 30 * u; g.strokeRect(x, y, w, h); g.restore(); }
-      if (O.guest && hostLabel) label(O.sub, x + w * 0.3, y + h - 24 * u, '#fff'); });
+      if (O.guest && hostLabel) label(O.sub, x + w * 0.3, y + h - 24 * u, '#fff'); }, clip);
     if (O.guest) { const r = Math.min(w, h) * 0.24; guestBadge(x + w - r - 24 * u, y + h - r - 52 * u, r, true); } // the guest's name label stays inside the photo
   }
   function guestBadge(cx, cy, r, withLabel) {
     item('guest', [cx - r, cy - r, 2 * r, 2 * r + (withLabel ? 40 * u : 0)], () => {
       g.fillStyle = '#ccc'; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.fill(); img(cx - r, cy - r, 2 * r, 2 * r, () => { g.beginPath(); g.arc(cx, cy, r, 0, 7); }, guest);
       g.strokeStyle = '#fff'; g.lineWidth = 5 * u; g.beginPath(); g.arc(cx, cy, r, 0, 7); g.stroke(); if (glow('guest')) ringGlow(cx, cy, r);
-      if (withLabel) label(O.guestName, cx, cy + r + 34 * u, '#fff'); });
+      if (withLabel) label(O.guestName, cx, cy + r + 34 * u, '#fff'); }, () => g.arc(cx, cy, r, 0, 7));
   }
   // host photo in a circle; with a guest, the two sit side by side
   function photoCircle(cx, cy, r, fill, ring) {
@@ -468,7 +472,7 @@ function makeCards(cv) { const api = {};
       img(hx - rh, cy - rh, 2 * rh, 2 * rh, () => { g.beginPath(); g.arc(hx, cy, rh, 0, 7); });
       if (ring) { g.strokeStyle = ring; g.lineWidth = 4 * u; g.beginPath(); g.arc(hx, cy, rh, 0, 7); g.stroke(); }
       if (glow('host')) ringGlow(hx, cy, rh);
-      if (two && rh > 40 * u) label(O.sub, hx, cy + rh + 34 * u, ring || '#fff'); });
+      if (two && rh > 40 * u) label(O.sub, hx, cy + rh + 34 * u, ring || '#fff'); }, () => g.arc(hx, cy, rh, 0, 7));
     if (two) guestBadge(gx, cy, rh, rh > 40 * u);
   }
   // the little "ılıl.l..ıllll" bars
