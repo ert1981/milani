@@ -10,7 +10,8 @@
   size(); document.body.appendChild(cv);
   MilaniDraw.render(g, d, cv.width, cv.height, m);
   window.__groklyCanvas = function () { return cv; };
-  window.__groklyStep = function (f, ms) { size(); MilaniDraw.feed(m, f, ms); MilaniDraw.render(g, d, cv.width, cv.height, m); };
+  window.__milaniStrings = m; // the strings' state (read-only use: tests)
+  window.__groklyStep = function (f, ms) { size(); MilaniDraw.feed(m, f, ms, d); MilaniDraw.render(g, d, cv.width, cv.height, m); };
   // opened on its own: play with a gentle made-up beat
   var host = false; try { host = window.parent !== window && !!window.parent.__groklyHost; } catch (e) {}
   if (!host) { var t0 = performance.now(); (function tick(t) { var s = (t - t0) / 1000, b = Math.max(0, Math.sin(s * 4)); window.__groklyStep({ level: 0.3 + 0.3 * b, bass: b, pulse: b, beat: b > 0.99, bands: [] }, t - t0); requestAnimationFrame(tick); })(t0); }

@@ -428,13 +428,14 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
   <div class="pbar">
     <div class="cols" id="paintCols" role="group" aria-label="Colour"></div>
     <label class="size">Size <input type="range" id="paintSize" min="2" max="48" value="8" aria-label="Brush size"><i id="paintDot"></i></label>
+    <span class="size" aria-hidden="true">Weight</span><div class="seg" id="paintWeight" role="group" aria-label="Weight of the next lines" title="Weight: heavy lines swing slowly and a little; light lines quiver fast and wide. Auto: from the line's size and length."><button data-w="auto" aria-pressed="true">Auto</button><button data-w="0" aria-pressed="false">Light</button><button data-w="0.5" aria-pressed="false">Medium</button><button data-w="1" aria-pressed="false">Heavy</button></div>
   </div>
   <div class="pbar">
     <div class="seg" id="paintTool" role="group" aria-label="Tool"><button data-t="pen" aria-pressed="true">Pen</button><button data-t="eraser" aria-pressed="false">Eraser</button></div>
     <div class="seg" id="paintPaper" role="group" aria-label="Paper"><button data-p="#0c0c0d" aria-pressed="true">Dark</button><button data-p="#f4efe6" aria-pressed="false">Light</button></div>
     <button class="btn small" id="paintUndo" disabled>Undo</button><button class="btn small" id="paintClear">Clear</button>
   </div>
-  <div class="hint">Press Done and your drawing becomes the picture: it waves, pulses and glows with your sound.</div>
+  <div class="hint">Press Done and your drawing becomes the picture: every line vibrates with your sound like a string. Heavy lines (big, long, or set to Heavy) swing slowly; light lines quiver fast.</div>
 </div>
 <script src="mp4-muxer.js"></script>
 <script src="vendor/webm-muxer.js"></script>
@@ -1579,7 +1580,7 @@ async function runJob(J) {
 
 // ---------- Draw your own: a small paint editor; Done makes the drawing the artwork (art/drawing), moving with the sound ----------
 const PAINT_COLS = ['#ffffff', '#15252c', '#e2614f', '#ffd166', '#6cc0d6', '#2f7a55', '#b388eb', '#ff8fb1'];
-const PT = { strokes: [], undo: [], col: '#ffffff', size: 8, tool: 'pen', paper: '#0c0c0d', aspect: 0.8, cw: 0, ch: 0, cur: null, pid: null, last: null };
+const PT = { strokes: [], undo: [], col: '#ffffff', size: 8, wt: 'auto', tool: 'pen', paper: '#0c0c0d', aspect: 0.8, cw: 0, ch: 0, cur: null, pid: null, last: null };
 function paintCols() {
   const box = $('paintCols'); box.innerHTML = '';
   for (const c of PAINT_COLS) { const b = document.createElement('button'); b.style.background = c; b.dataset.c = c; b.title = COLOR_NAMES[c] || c; b.setAttribute('aria-label', COLOR_NAMES[c] || c); b.onclick = () => paintCol(c); box.append(b); }
@@ -1605,7 +1606,7 @@ function paintAdd(q) { // points every ~2.5 CSS px, so the eraser can cut anywhe
 function paintErase(q) { // the eraser cuts the strokes it touches (they stay vector lines, so they keep moving with the sound)
   const R = Math.max(7, PT.size * 0.9), out = [];
   for (const s of PT.strokes) { const half = (s.w * PT.ch) / 2; let cur = [];
-    const flush = () => { if (cur.length >= 2) out.push({ c: s.c, w: s.w, p: cur }); cur = []; };
+    const flush = () => { if (cur.length >= 2) out.push(s.k == null ? { c: s.c, w: s.w, p: cur } : { c: s.c, w: s.w, k: s.k, p: cur }); cur = []; }; // the pieces keep the line's weight setting
     for (let k = 0; k + 1 < s.p.length; k += 2) { if (Math.hypot((s.p[k] - q.x) * PT.cw, (s.p[k + 1] - q.y) * PT.ch) <= R + half * 0.5) flush(); else cur.push(s.p[k], s.p[k + 1]); }
     flush(); }
   PT.strokes = out;
@@ -1613,12 +1614,13 @@ function paintErase(q) { // the eraser cuts the strokes it touches (they stay ve
 function paintEraseTo(q) { const a = PT.last || q, n = Math.max(1, Math.ceil(Math.hypot((q.x - a.x) * PT.cw, (q.y - a.y) * PT.ch) / 4)); for (let i = 1; i <= n; i++) paintErase({ x: a.x + ((q.x - a.x) * i) / n, y: a.y + ((q.y - a.y) * i) / n }); PT.last = q; }
 { const cv = $('paintCv');
   cv.addEventListener('pointerdown', (ev) => { if (PT.pid != null) return; ev.preventDefault(); cv.setPointerCapture(ev.pointerId); PT.pid = ev.pointerId; const q = paintPt(ev); paintSnap();
-    if (PT.tool === 'eraser') { PT.last = null; paintEraseTo(q); } else PT.cur = { c: PT.col, w: r4(PT.size / PT.ch), p: [r4(q.x), r4(q.y)] }; paintDraw(); });
+    if (PT.tool === 'eraser') { PT.last = null; paintEraseTo(q); } else { PT.cur = { c: PT.col, w: r4(PT.size / PT.ch), p: [r4(q.x), r4(q.y)] }; if (PT.wt !== 'auto') PT.cur.k = +PT.wt; } paintDraw(); });
   cv.addEventListener('pointermove', (ev) => { if (ev.pointerId !== PT.pid) return; const es = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
     for (const e of es.length ? es : [ev]) { const q = paintPt(e); if (PT.tool === 'eraser') paintEraseTo(q); else if (PT.cur) paintAdd(q); } paintDraw(); });
   const up = (ev) => { if (ev.pointerId !== PT.pid) return; PT.pid = null; PT.last = null; if (PT.cur) { PT.strokes.push(PT.cur); PT.cur = null; } else if (PT.tool === 'eraser' && PT.undo.length && PT.undo[PT.undo.length - 1] === JSON.stringify(PT.strokes)) PT.undo.pop(); paintDraw(); };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up); }
 segGroup('paintTool', 't', (t) => paintTool(t));
+segGroup('paintWeight', 'w', (w) => { PT.wt = w; if (PT.tool !== 'pen') paintTool('pen'); }); // the weight of the next lines (Auto: size × length)
 segGroup('paintPaper', 'p', (p) => { PT.paper = p; if (PT.col === p) paintCol(p === '#0c0c0d' ? '#ffffff' : '#15252c'); paintDraw(); });
 $('paintSize').oninput = (e) => { PT.size = +e.target.value; paintDot(); };
 $('paintUndo').onclick = () => { if (!PT.undo.length) return; PT.strokes = JSON.parse(PT.undo.pop()); paintDraw(); };
