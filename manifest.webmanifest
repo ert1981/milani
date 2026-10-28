@@ -1,0 +1,20 @@
+{
+  "id": "/milani/",
+  "name": "Milani — audio to video",
+  "short_name": "Milani",
+  "description": "Turn a voice recording, podcast, or song into a sound-reactive video. Generative art by Reza Milani, made by code, on your device.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/milani/",
+  "scope": "/milani/",
+  "display": "standalone",
+  "background_color": "#ece6df",
+  "theme_color": "#00506a",
+  "categories": ["music", "entertainment", "graphics"],
+  "icons": [
+    { "src": "brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "brand/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
