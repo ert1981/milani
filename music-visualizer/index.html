@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Music Visualizer — Generative Art by Reza Milani</title>
+<meta name="description" content="A music visualizer that cuts between Reza Milani’s generative artworks on the beat. Sound-reactive art written in code, in your browser, not by an AI model.">
+<meta name="author" content="Reza Milani">
+<meta name="robots" content="index,follow,max-image-preview:large">
+<link rel="canonical" href="https://ert1981.github.io/milani/music-visualizer/">
+<link rel="alternate" hreflang="en" href="https://ert1981.github.io/milani/music-visualizer/">
+<link rel="alternate" hreflang="x-default" href="https://ert1981.github.io/milani/music-visualizer/">
+<meta name="theme-color" content="#ece6df" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0f191d" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect x='2' y='2' width='36' height='36' rx='11' fill='%2300506a'/%3E%3Ccircle cx='12.5' cy='22' r='2.6' fill='%23fff'/%3E%3Crect x='18' y='16' width='4' height='12' rx='2' fill='%23fff'/%3E%3Crect x='25' y='10' width='4' height='20' rx='2' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="../brand/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Milani">
+<meta property="og:locale" content="en_US">
+<meta property="og:url" content="https://ert1981.github.io/milani/music-visualizer/">
+<meta property="og:title" content="Music visualizer — generative art by Reza Milani">
+<meta property="og:description" content="A music visualizer that cuts between Reza Milani’s generative artworks on the beat. Sound-reactive art written in code, in your browser, not by an AI model.">
+<meta property="og:image" content="https://ert1981.github.io/milani/brand/og.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Four generative artworks by Reza Milani, used as pictures in the Milani music visualizer.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@RezaMilani">
+<meta name="twitter:title" content="Music visualizer — generative art by Reza Milani">
+<meta name="twitter:description" content="A music visualizer that cuts between Reza Milani’s generative artworks on the beat. Sound-reactive art written in code, in your browser, not by an AI model.">
+<meta name="twitter:image" content="https://ert1981.github.io/milani/brand/og.jpg">
+<meta name="twitter:image:alt" content="Four generative artworks by Reza Milani, used as pictures in the Milani music visualizer.">
+<link rel="preload" href="../vendor/fonts/figtree-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../vendor/fonts.css">
+<link rel="stylesheet" href="../brand/pages.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://ert1981.github.io/milani/music-visualizer/#page",
+      "url": "https://ert1981.github.io/milani/music-visualizer/",
+      "name": "Music Visualizer — Generative Art by Reza Milani",
+      "inLanguage": "en",
+      "description": "A music visualizer that cuts between Reza Milani's generative artworks on the beat.",
+      "isPartOf": { "@type": "WebSite", "name": "Milani", "url": "https://ert1981.github.io/milani/" },
+      "about": { "@id": "https://ert1981.github.io/milani/#app" },
+      "breadcrumb": { "@id": "https://ert1981.github.io/milani/music-visualizer/#crumb" }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://ert1981.github.io/milani/music-visualizer/#crumb",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "Milani", "item": "https://ert1981.github.io/milani/" },
+        { "@type": "ListItem", "position": 2, "name": "Music visualizer", "item": "https://ert1981.github.io/milani/music-visualizer/" }
+      ]
+    },
+    {
+      "@type": "HowTo",
+      "name": "How to make a music visualizer video with Milani",
+      "inLanguage": "en",
+      "step": [
+        { "@type": "HowToStep", "position": 1, "name": "Switch to Music video", "text": "Open the editor and switch to Music video." },
+        { "@type": "HowToStep", "position": 2, "name": "Upload the music", "text": "Upload a song or any music file. The waveform handles choose the passage." },
+        { "@type": "HowToStep", "position": 3, "name": "Pick the artworks", "text": "Choose two to six generative artworks, or let Milani pick four. Each one moves with the sound." },
+        { "@type": "HowToStep", "position": 4, "name": "Set the cuts", "text": "Choose how often the picture changes: every few bars, every bar, or every two beats. The change can be a hard cut or a short crossfade." },
+        { "@type": "HowToStep", "position": 5, "name": "Export", "text": "Press Make my video. A free export is the first 30 seconds, with a small mark. The file is made on your device." }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        { "@type": "Question", "name": "How is this different from a bars visualizer?", "acceptedAnswer": { "@type": "Answer", "text": "A bars or equalizer video draws the spectrum of the sound. This music visualizer shows Reza Milani’s generative artworks and cuts from one to the next on the beat. The art itself also moves with the music. Both are in Milani; the waveform page is the one for bars and lines." } },
+        { "@type": "Question", "name": "Is the art made by an AI model?", "acceptedAnswer": { "@type": "Answer", "text": "No. Reza Milani wrote each artwork in code. Generate picks a new seed and draws another version of that same piece. Your music drives the motion. No image model and no video model is called." } },
+        { "@type": "Question", "name": "Which artworks can I use?", "acceptedAnswer": { "@type": "Answer", "text": "Night River, Spring Behind the River V, Dusk Hills, Poppy Map, Garden Lights, The Last Flower, Emotions, Old Tree, A Field in the Wind, Fern, Imago, Hart, Muz II, and Paris. Pick two to six. If you pick none, Milani chooses four." } },
+        { "@type": "Question", "name": "How long is a free music video?", "acceptedAnswer": { "@type": "Answer", "text": "The first 30 seconds of the passage you selected, with a small Made with Milani mark. Collectors who minted Reza Milani’s art on Verse can export up to 5 minutes without the mark. 1080p is the usual size; 4K is part of collector access." } }
+      ]
+    }
+  ]
+}
+</script>
+</head>
+<body>
+<a class="skip" href="#content">Skip to content</a>
+<div class="wrap">
+  <header>
+    <a class="sig" href="../" aria-label="Milani, by Reza Milani"><img class="sigImg" src="../brand/signature.png" alt=""></a>
+    <p class="tagline">Music visualizer</p>
+  </header>
+  <main id="content">
+    <nav class="crumb" aria-label="Breadcrumb"><a href="../">Milani</a><span aria-hidden="true">/</span><span>Music visualizer</span></nav>
+    <h1>A music visualizer made of generative art</h1>
+    <p class="lead">Upload a song. Milani cuts between artworks by Reza Milani on the beat, and each artwork moves with the music. The pictures were written in code. They are not frames from an AI video generator.</p>
+    <p class="row"><a class="btn primary" href="../?mode=music">Open the visualizer</a></p>
+
+    <figure class="artrow">
+      <img src="../art/_thumbs/night-river.jpg" width="480" height="480" alt="Night River by Reza Milani: a bare tree under a starry sky and bands of blue, yellow, and coral hills" decoding="async">
+      <img src="../art/_thumbs/old-tree.jpg" width="480" height="480" alt="Old Tree by Reza Milani: a turquoise tree on a pale ground, with black lines radiating around it" loading="lazy" decoding="async">
+      <img src="../art/_thumbs/fern.jpg" width="480" height="480" alt="Fern by Reza Milani: arcs of short colored marks on a pale ground" loading="lazy" decoding="async">
+      <figcaption>Night River, Old Tree, and Fern. In a music video they take turns, and the sound moves each one. Generate draws a new version of a piece from a new seed, so the next render is not a copy of this still.</figcaption>
+    </figure>
+
+    <h2>What the visualizer actually does</h2>
+    <p>Music video mode is the audio-reactive edit. You pick two to six pieces. Milani listens for bars and beats and changes the picture there. Calm holds a picture for two to four bars. Pulse changes every bar. Fast changes every two beats. The join is either a hard cut or a short crossfade.</p>
+    <p>Between cuts, the artwork is not a still. Level, bass, pitch, and the beat all feed the drawing, which is why a tree, a field, or a field of marks shifts while the same shot is on screen. That is generative art from sound: the piece already has a form, and the music plays it.</p>
+    <p>If you would rather see the spectrum itself — bars, a line, a circle, an equalizer — that is a different picture. It lives under <a href="../waveform-video-maker/">waveform and equalizer videos</a>, in Voice video mode.</p>
+
+    <h2>The artworks</h2>
+    <p>These are the pieces the visualizer can cut between. They are the same works as in the Art tab of the editor:</p>
+    <ul>
+      <li>Rivers and trees: Night River, Spring Behind the River V, The Last Flower, Old Tree.</li>
+      <li>Fields and hills: Dusk Hills, A Field in the Wind, Poppy Map, Fern.</li>
+      <li>Abstract: Garden Lights, Emotions, Imago, Hart, Muz II, Paris.</li>
+    </ul>
+    <p>Old Tree, A Field in the Wind, and Muz II take longer to draw. The editor marks them. A short passage at 720p is the quicker way to try one. If you leave the artwork list empty, Milani picks four for you. Pick for me does the same with a new choice.</p>
+    <p>Pressing Generate, or New edit, does not ask a model for a new style. It draws another version of the artwork Reza Milani already wrote, from a seed nobody has used. You can step back to the previous seed.</p>
+
+    <h2>How to make the video</h2>
+    <ol>
+      <li>Open the editor and switch to Music video.</li>
+      <li>Upload a song or any music file. The waveform handles choose the passage.</li>
+      <li>Choose two to six generative artworks, or let Milani pick four. Each one moves with the sound.</li>
+      <li>Choose how often the picture changes: every few bars, every bar, or every two beats. The change can be a hard cut or a short crossfade.</li>
+      <li>Press Make my video. A free export is the first 30 seconds, with a small mark. The file is made on your device.</li>
+    </ol>
+    <p>1080p suits X, Instagram, and TikTok. The frame can be a post (4:5), a square, a story (9:16), or wide 16:9. Export runs in the browser. A longer piece of generative art can take a while to draw; the page estimates that before it commits you to the wait. Collectors of the work on <a href="https://verse.works/rezamilani" target="_blank" rel="me noopener">Verse</a> can export up to 5 minutes without the mark, and 4K is part of that access.</p>
+    <p>A voice recording can use one of these artworks too, as a single picture that does not cut. That path is the <a href="../audio-to-video/">audio to video converter</a>. Music video mode is the one that edits between several pieces.</p>
+
+    <h2>Questions</h2>
+    <h3>How is this different from a bars visualizer?</h3>
+    <p>A bars or equalizer video draws the spectrum of the sound. This music visualizer shows Reza Milani’s generative artworks and cuts from one to the next on the beat. The art itself also moves with the music. Both are in Milani; the waveform page is the one for bars and lines.</p>
+    <h3>Is the art made by an AI model?</h3>
+    <p>No. Reza Milani wrote each artwork in code. Generate picks a new seed and draws another version of that same piece. Your music drives the motion. No image model and no video model is called.</p>
+    <h3>Which artworks can I use?</h3>
+    <p>Night River, Spring Behind the River V, Dusk Hills, Poppy Map, Garden Lights, The Last Flower, Emotions, Old Tree, A Field in the Wind, Fern, Imago, Hart, Muz II, and Paris. Pick two to six. If you pick none, Milani chooses four.</p>
+    <h3>How long is a free music video?</h3>
+    <p>The first 30 seconds of the passage you selected, with a small Made with Milani mark. Collectors who minted Reza Milani’s art on Verse can export up to 5 minutes without the mark. 1080p is the usual size; 4K is part of collector access.</p>
+
+    <h2>Related</h2>
+    <div class="related">
+      <a href="../waveform-video-maker/">Waveform and equalizer video maker</a>
+      <a href="../audio-to-video/">Audio to video converter</a>
+      <a href="../">The Milani editor</a>
+    </div>
+    <p class="row"><a class="btn primary" href="../?mode=music">Make a music visualizer</a></p>
+  </main>
+  <footer>
+    <span>Made by Reza Milani · MilaniArte</span>
+    <a href="../#guide">How it works</a>
+    <a href="https://verse.works/rezamilani" target="_blank" rel="me noopener">Art on Verse</a>
+  </footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+# Google only reads a robots.txt at the host root (https://ert1981.github.io/robots.txt),
+# which is the ert1981.github.io site, not this project. Paths below match that host.
+# Copy this file there, or submit the sitemap in Search Console.
+User-agent: *
+Allow: /milani/
+Disallow: /milani/models/
+
+Sitemap: https://ert1981.github.io/milani/sitemap.xml
