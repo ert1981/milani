@@ -6,6 +6,7 @@
 <meta name="robots" content="noindex">
 <title>NYC cover pack · Milani artwork frame</title>
 <link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="../../vendor/fonts.css"><!-- the site's own fonts: a cover can take the visitor's font from the Text tab -->
 <style>html,body{margin:0;height:100%;background:#000;overflow:hidden}canvas{display:block}</style>
 </head>
 <body>
@@ -17,6 +18,8 @@
 //   &m=art      the generative code only, filling the window at the video's shape (a picture behind any template / a music-video shot)
 //   &m=cover    the whole cover design with its text layout, letterboxed to the window (the "Generative covers" templates)
 //   &h=0x…      seed (the default seed keeps the template's own look); &title= &name= &guest= the visitor's text (cover mode)
+//   &mo=        text motion (rise, blur, type, scramble, flap, wipe, spot, juice, steps); &ti= text intro: once (default), loop (every 9 s), off
+//   &fo=        typeface: a pack font key (anton…) or u:<CSS font-family> (the visitor's font); &pa= palette: a pack key or c:<bg>.<ink>.<acc> (hex)
 // Exposes window.__groklyCanvas() and window.__groklyStep(features, ms), the Milani artwork protocol.
 (function () {
   'use strict';
@@ -25,7 +28,17 @@
   const mode = q.get('m') === 'cover' ? 'cover' : 'art';
   const DEFAULT_SEED = '0x6d696c616e69617274652d6772' + '0'.repeat(38);
   const h = q.get('h') || DEFAULT_SEED;
-  if (h !== DEFAULT_SEED) { let x = 2166136261; for (let i = 0; i < h.length; i++) { x ^= h.charCodeAt(i); x = Math.imul(x, 16777619); } state.tpl[idx] = { seed: (x >>> 0) % 99991 }; }
+  const tp = (state.tpl[idx] = {});
+  if (h !== DEFAULT_SEED) { let x = 2166136261; for (let i = 0; i < h.length; i++) { x ^= h.charCodeAt(i); x = Math.imul(x, 16777619); } tp.seed = (x >>> 0) % 99991; }
+  // the visitor's choices (Template tab → cover options): motion, typeface, palette
+  const mo = q.get('mo'); if (mo && MOTIONS[mo]) tp.motion = mo;
+  const fo = q.get('fo') || '', userFont = fo.startsWith('u:') ? fo.slice(2) : null;
+  if (userFont !== null) { const fam = userFont ? (userFont.includes(',') ? userFont : `"${userFont}"`) : 'system-ui, -apple-system, sans-serif'; FONTS.u = { n: 'Yours', fam, w: 700, up: false }; tp.font = 'u'; }
+  else if (FONTS[fo]) tp.font = fo;
+  const pa = q.get('pa') || '', hx = (v) => (/^[0-9a-f]{6}$/i.test(v || '') ? '#' + v : null);
+  if (pa.startsWith('c:')) { const [bg, ink, acc] = pa.slice(2).split('.').map(hx); if (bg && ink) { PAL.u = { n: 'Yours', bg, ink, acc: acc || ink, soft: hexMix(bg, ink, 0.18) }; tp.pal = 'u'; } }
+  else if (PAL[pa]) tp.pal = pa;
+  const intro = ['loop', 'off'].includes(q.get('ti')) ? q.get('ti') : 'once';
   // the visitor's text in every field the layouts read; sample-only lines (dates, episode numbers…) are left out
   // the visitor's text: from the address (cover mode), else what Milani last set in window.GroklyNYC.text (art mode, music-video shots)
   let PT = {}; try { PT = (parent && parent.GroklyNYC && parent.GroklyNYC.text) || {}; } catch (e) {}
@@ -93,9 +106,10 @@
     if (M && M.grain > 0.02) grain(e, M.grain);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
   }
-  // text: always settled. The pack's 9 s intro/outro loop would empty the picture every 9 s of a video, and a paused preview
-  // (only a few warm-up steps in) would show no text at all; the text motions (wave, bounce, voice sync…) keep moving
-  vis = () => 1; // eslint-disable-line no-global-assign
+  // the text intro (it is where the chosen motion plays): once at the start of the video (the default), the pack's own 9 s loop
+  // (in, hold, out), or off (always settled). The voice-synced letter motions keep moving in every case.
+  if (intro === 'off') vis = () => 1; // eslint-disable-line no-global-assign
+  else if (intro === 'once') vis = (e, dd) => (e.still ? 1 : clamp(ease((e.tt - 0.15 - dd) / 0.7))); // eslint-disable-line no-global-assign
   const subs = {}; const sub = (w, h) => { const k = w + 'x' + h; if (!subs[k]) subs[k] = mk(w, h); const c = subs[k]; c.getContext('2d').setTransform(1, 0, 0, 1, 0, 0); c.getContext('2d').clearRect(0, 0, w, h); return c; };
 
   // ---- protocol
@@ -109,7 +123,7 @@
   function size() { const w = Math.max(16, innerWidth | 0), hh = Math.max(16, innerHeight | 0); if (cv.width !== w || cv.height !== hh) { cv.width = w; cv.height = hh; } }
   addEventListener('resize', () => { size(); if (ready && A0) frame(A0, Math.max(0, last)); });
   // fonts first, so the first frame (and every export) is drawn with the template's own typeface
-  const fl = [...Object.values(FONTS).map((f) => `${f.w} 40px ${f.fam}`), '400 40px "Hanken Grotesk"', '600 40px "Hanken Grotesk"', '800 40px "Hanken Grotesk"', '900 40px "Hanken Grotesk"'];
+  const fl = [...Object.values(FONTS).filter((f) => f !== FONTS.u || !/system-ui|ui-serif|-apple-system/.test(f.fam)).map((f) => `${f.w} 40px ${f.fam}`), '400 40px "Hanken Grotesk"', '600 40px "Hanken Grotesk"', '800 40px "Hanken Grotesk"', '900 40px "Hanken Grotesk"'];
   Promise.race([Promise.all(fl.map((s) => document.fonts.load(s, 'Aa').catch(() => {}))), new Promise((r) => setTimeout(r, 4000))]).then(() => {
     cache.clear(); size(); ready = true; A0 = voice({}, 1 / 30); frame(A0, 0);
   });
