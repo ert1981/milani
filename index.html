@@ -314,6 +314,12 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
 .nycsets { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 .nycsets button { appearance: none; border: 1px solid var(--line, #ccc); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 5px 11px; font: 500 12px/1 var(--body); cursor: pointer; }
 .nycsets button[aria-pressed="true"] { border-color: var(--teal); background: var(--teal); color: #fff; }
+.coverOpts { display: grid; gap: 7px; padding: 10px 12px; margin: 4px 0 10px; border: 1px solid var(--line, #ddd); border-radius: 12px; background: var(--paper); }
+.coverOpts .f { margin-top: 4px; }
+.coverOpts .nycsets { margin: 0; }
+.coverOpts .pal { display: inline-flex; gap: 2px; vertical-align: middle; margin-right: 5px; }
+.coverOpts .pal i { width: 10px; height: 14px; border-radius: 2px; display: inline-block; }
+#cvPhoto[aria-pressed="true"] { border-color: var(--teal); background: var(--teal); color: #fff; }
 .covers { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; max-height: 340px; overflow-y: auto; padding: 2px; }
 .covers button, .nycart button { appearance: none; border: 2px solid transparent; border-radius: 10px; padding: 3px; background: var(--paper); cursor: pointer; display: grid; gap: 3px; font: 500 10.5px/1.15 var(--body); color: var(--ink); text-align: left; }
 .covers button[aria-pressed="true"], .nycart button[aria-pressed="true"] { border-color: var(--teal); }
@@ -472,6 +478,20 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
           <h3>YouTube</h3><div class="styles" data-group="wide"></div>
           <h3>Or make your own</h3><div class="styles" data-group="wave"></div>
           <h3>Generative covers <span class="note">320 moving designs · they follow your voice or music</span></h3>
+          <div class="coverOpts" id="coverOpts" hidden>
+            <b id="cvName"></b>
+            <div class="f">Text</div>
+            <div class="seg" id="cvText" role="group" aria-label="Cover text"><button data-v="built" aria-pressed="true">The cover's own layout</button><button data-v="own" aria-pressed="false">My text · move it anywhere</button></div>
+            <div class="f">Text motion</div><div class="nycsets" id="cvMotion" role="group" aria-label="Text motion"></div>
+            <div class="f">Text intro</div>
+            <div class="seg" id="cvIntro" role="group" aria-label="Text intro"><button data-v="once" aria-pressed="true">Once at the start</button><button data-v="loop" aria-pressed="false">Again every 9 s</button><button data-v="off" aria-pressed="false">Always on</button></div>
+            <div class="f">Typeface</div><div class="nycsets" id="cvFont" role="group" aria-label="Cover typeface"></div>
+            <div class="f">Colours</div><div class="nycsets" id="cvPal" role="group" aria-label="Cover colours"></div>
+            <div class="f">Add</div>
+            <div class="row"><button class="btn small" id="cvPhoto" aria-pressed="false">My photo</button><span class="note">your photo from the Photo tab, as a round badge you can move</span></div>
+            <div class="seg" id="cvWave" role="group" aria-label="Wave"><button data-v="off" aria-pressed="true">No wave</button><button data-v="bars" aria-pressed="false">Bars</button><button data-v="mirror" aria-pressed="false">Mirror</button><button data-v="line" aria-pressed="false">Line</button><button data-v="dots" aria-pressed="false">Dots</button></div>
+            <div class="row"><button class="btn small" id="cvNew">New version</button><button class="btn small" id="cvOrig">Original</button><span class="note">Tap the photo, wave or your text on the preview to move, resize, duplicate or hide it.</span></div>
+          </div>
           <div class="nycsets" id="coverSets" role="group" aria-label="Kind of cover"></div>
           <div class="covers" id="coverGrid" role="group" aria-label="Generative covers"></div>
           <div class="row" id="fmtRow">
@@ -671,10 +691,10 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
 <script src="vendor/webm-muxer.js"></script>
 <script src="vendor/fix-webm-duration.js"></script>
 <script src="colour.js"></script>
-<script src="music-video.js"></script>
+<script src="music-video.js?v=2"></script>
 <script src="ui-sound.js"></script>
 <script src="engine.js"></script>
-<script src="art-engine.js"></script>
+<script src="art-engine.js?v=3"></script>
 <script src="art/drawing/draw-core.js"></script><!-- Draw your own -->
 <script src="web3-pass.js"></script><!-- Grokly Pass -->
 <script src="music/music3.js"></script><script src="music/bg-music.js"></script><!-- Background music -->
@@ -699,6 +719,7 @@ const fontStack = (f) => (!f ? SYS_SANS : f.includes(',') ? f : `"${f}", ${SYS_S
 const COLOR_NAMES = { '#0c0c0d': 'Black', '#f3f1ec': 'Off-white', '#e6dfd8': 'Sand', '#005066': 'Deep teal', '#0099cc': 'Sky blue', '#0058a0': 'Royal blue', '#ec7a6a': 'Coral', '#4f2d3a': 'Plum', '#b291b4': 'Lavender', '#004b33': 'Forest green', '#87a29a': 'Sage', '#4b4a66': 'Slate', '#b2d4cb': 'Mint', '#ffffff': 'White' };
 const PALETTE = ['#0c0c0d', '#f3f1ec', '#e6dfd8', '#005066', '#0099cc', '#0058a0', '#ec7a6a', '#4f2d3a', '#b291b4', '#004b33', '#87a29a', '#4b4a66', '#b2d4cb', '#ffffff'];
 const S = { style: 'card:square', fmt: 'post', pcm: null, full: null, feats: null, name: 'Sample beat', avatar: null, trim: 0, font: '', textScale: 1,
+  cover: { text: 'built', motion: '', intro: 'once', font: '', pal: '', photo: false, wave: 'off' }, // Generative covers: the visitor's choices (shared by all covers)
   subs: [], subFont: '', subScale: 1, subPos: 'auto', subLook: 'box', subColor: 'auto', bg: null, ink: null, acc: null, q: 1080, wm: true, wmStyle: 'sig' /* founder: signature + "Made with Milani" by default */, pic: { kind: 'photo' }, userPhoto: false, artSeeds: {}, artHist: {}, artVers: {}, lastArt: null, guest: null, bgImage: null, layout: {}, boxPics: {}, drawing: null, mode: 'voice', mv: { arts: [], style: 'calm', trans: 'cut', seed: (Math.random() * 2 ** 31) >>> 0, hist: [] } };
 const store = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 const artSeedOf = (id) => S.artSeeds[id] || GroklyArt.defaultSeed;
@@ -721,7 +742,7 @@ POS_Y['card:bubble'][1] = 0.5; // Bubble: the lower disc holds the title, so Bot
 const AUTO_Y_GUEST = { 'card:square': 0.16, 'card:split': 0.16, 'card:poster': 0.25, 'card:forest': 0.25, 'card:podcast': 0.2 };
 const WAVE_POS = [0.22, 0.915]; // wave designs: below the title/name, above the watermark (Auto uses the bottom one)
 // settings kept across reloads (QA: most settings were lost)
-const SAVE_KEYS = ['wmStyle', 'mode', 'mv', 'colourSeed', 'fmt', 'bg', 'ink', 'acc', 'font', 'textScale', 'subFont', 'subScale', 'subPos', 'subLook', 'subColor', 'q', 'artSeeds', 'artHist', 'artVers', 'lastArt', 'layout'];
+const SAVE_KEYS = ['wmStyle', 'mode', 'mv', 'cover', 'colourSeed', 'fmt', 'bg', 'ink', 'acc', 'font', 'textScale', 'subFont', 'subScale', 'subPos', 'subLook', 'subColor', 'q', 'artSeeds', 'artHist', 'artVers', 'lastArt', 'layout'];
 // drag-to-move layout: offsets (fraction of width / height) per item, kept per template + video shape
 const layoutKey = (st = S) => `${st.style}|${isCard(st.style) ? cardFmt(st.style) : st.fmt}`;
 const layoutOf = (st = S) => (st.layout[layoutKey(st)] = st.layout[layoutKey(st)] || {});
@@ -1052,9 +1073,15 @@ async function preparePicture(source, o, st = S) { // st: the live state, or an 
     if (mix.__key !== key) { mix.setPlan(st.mvPlan, w, h); mix.__key = key; } return mix.canvas;
   }
   if (isCover(st.style)) { // a cover design: the whole NYC template, with the visitor's text and photo, is the picture
-    window.GroklyNYC = window.GroklyNYC || {}; GroklyNYC.photo = st.avatar ? await imgOf(st.avatar) : null; o.noOverlay = true;
+    // the cover's own text layout ('built'), or only its generative code with the visitor's own movable title and name ('own');
+    // either way the visitor can add their photo and a wave (Milani's movable items) and pick motion, typeface and colours
+    const C = st.cover, own = C.text === 'own', hex = (c) => (/^#[0-9a-f]{6}$/i.test(c || '') ? c.slice(1) : '');
+    window.GroklyNYC = window.GroklyNYC || {}; GroklyNYC.photo = st.avatar ? await imgOf(st.avatar) : null;
+    const look = { mo: C.motion, ti: C.intro, fo: C.font === 'mine' ? 'u:' + (st.font || '') : C.font, pa: C.pal === 'mine' ? (hex(st.bg) && hex(st.ink) ? `c:${hex(st.bg)}.${hex(st.ink)}.${hex(st.acc) || hex(st.ink)}` : '') : C.pal };
+    const text = { title: o.title, name: o.sub, guest: o.guestName };
+    o.cover = true; o.badge = C.photo ? st.avatar : null; o.waveStyle = C.wave; if (!own) o.title = o.sub = '';
     const sc = o.artShort / Math.min(o.W, o.H);
-    await source.setup({ id: GroklyArt.nycId(coverNum(st.style)), mode: 'cover', text: { title: o.title, name: o.sub, guest: o.guestName }, seed: st.artSeeds[st.style] || GroklyArt.defaultSeed, w: Math.round(o.W * sc), h: Math.round(o.H * sc) });
+    await source.setup({ id: GroklyArt.nycId(coverNum(st.style)), mode: own ? 'art' : 'cover', text, look, seed: st.artSeeds[st.style] || GroklyArt.defaultSeed, w: Math.round(o.W * sc), h: Math.round(o.H * sc) });
     return source.canvas;
   }
   if (st.pic.kind !== 'art') { source.destroy(); return st.bgImage && st.style === 'full' ? imgOf(st.bgImage) : null; } // Full: the background image fills the frame
@@ -1410,8 +1437,8 @@ document.querySelector('.tools[role=tablist]').addEventListener('keydown', (e) =
   if (n === null) return; e.preventDefault(); const t = tabs[(n + tabs.length) % tabs.length]; t.focus(); t.click();
 });
 function selectStyle(id) {
-  if (isCover(id)) { const x = GroklyArt.NYC[coverNum(id) - 1]; if (x && S.fmt !== x.fmt) { S.fmt = x.fmt; setSeg('fmt', 'f', S.fmt); } }
-  S.style = id; sel = null; store.set('grokly.style', id); markCovers();
+  if (isCover(id) && S.cover.text !== 'own') { const x = GroklyArt.NYC[coverNum(id) - 1]; if (x && S.fmt !== x.fmt) { S.fmt = x.fmt; setSeg('fmt', 'f', S.fmt); } } // the cover's own layout keeps its shape; with your own text any shape works
+  S.style = id; sel = null; store.set('grokly.style', id); markCovers(); showCoverOpts();
   document.querySelectorAll('.styles .chip').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.s === id))); setupPreview();
 }
 async function buildChips() {
@@ -1481,6 +1508,24 @@ function buildCovers() {
   const box = $('coverGrid'); box.innerHTML = '';
   for (const x of GroklyArt.NYC) if (coverSet === 'all' || x.set === coverSet) box.append(nycTile(x, 'cover', S.style === 'cover:' + x.n, () => selectStyle('cover:' + x.n)));
 }
+function showCoverOpts() {
+  const box = $('coverOpts'); box.hidden = !isCover(S.style); if (box.hidden) return; const C = S.cover;
+  { const x = GroklyArt.NYC[coverNum(S.style) - 1]; $('cvName').textContent = x ? `Cover ${x.n} · ${x.name} — make it yours` : ''; }
+  const chips = (id, list, cur, onPick) => { const b0 = $(id); b0.innerHTML = ''; for (const [k, label, sw] of list) { const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', String(k === cur));
+    if (sw) { const p = document.createElement('span'); p.className = 'pal'; for (const c of sw) { const i = document.createElement('i'); i.style.background = c; p.append(i); } b.append(p); } b.append(label); b.onclick = () => onPick(k); b0.append(b); } };
+  const set = (k, v) => { S.cover[k] = v; saveState(); showCoverOpts(); setupPreview(); };
+  chips('cvMotion', [['', "Cover's own"], ...GroklyArt.NYC_MOTIONS], C.motion, (k) => set('motion', k));
+  chips('cvFont', [['', "Cover's own"], ['mine', 'My font (Text tab)'], ...GroklyArt.NYC_FONTS.map(([k, n]) => [k, n])], C.font, (k) => set('font', k));
+  chips('cvPal', [['', "Cover's own"], ['mine', 'My colours (Colour tab)', [S.bg || '#888888', S.ink || '#ffffff', S.acc || S.ink || '#ffffff']], ...GroklyArt.NYC_PALS.map(([k, n, a, b, c]) => [k, n, [a, b, c]])], C.pal, (k) => set('pal', k));
+  setSeg('cvText', 'v', C.text); setSeg('cvIntro', 'v', C.intro); setSeg('cvWave', 'v', C.wave); $('cvPhoto').setAttribute('aria-pressed', String(!!C.photo));
+  const builtOnly = C.text !== 'own'; for (const id of ['cvMotion', 'cvIntro']) $(id).querySelectorAll('button').forEach((b) => (b.disabled = !builtOnly)); // motion and intro belong to the cover's own text
+}
+segGroup('cvText', 'v', (v) => { S.cover.text = v; if (v === 'built') { const x = GroklyArt.NYC[coverNum(S.style) - 1]; if (x && S.fmt !== x.fmt) { S.fmt = x.fmt; setSeg('fmt', 'f', S.fmt); } } saveState(); showCoverOpts(); setupPreview(); });
+segGroup('cvIntro', 'v', (v) => { S.cover.intro = v; saveState(); setupPreview(); });
+segGroup('cvWave', 'v', (v) => { S.cover.wave = v; if (v !== 'off') { const L = layoutOf(); if (L.wave2 && L.wave2.hide) setL('wave2', { hide: false }); } saveState(); setupPreview(); });
+$('cvPhoto').onclick = () => { S.cover.photo = !S.cover.photo; if (S.cover.photo) { const L = layoutOf(); if (L.photo && L.photo.hide) setL('photo', { hide: false }); } saveState(); showCoverOpts(); setupPreview(); };
+$('cvNew').onclick = () => { if (!isCover(S.style)) return; S.artSeeds[S.style] = GroklyArt.randomSeed(); saveState(); setupPreview(); };
+$('cvOrig').onclick = () => { if (!isCover(S.style)) return; delete S.artSeeds[S.style]; saveState(); setupPreview(); };
 function markCovers() { for (const b of $('coverGrid').children) b.setAttribute('aria-pressed', String(S.style === 'cover:' + b.dataset.n)); }
 const ART_GROUPS = [
   ['Rivers & Trees', ['night-river', 'spring-behind-the-river-v', 'the-last-flower', 'old-tree']],
@@ -1934,6 +1979,9 @@ $('drawOpen').onclick = openPaint;
     const ok = { fmt: FMT[v.fmt] ? v.fmt : undefined, bg: col(v.bg), ink: col(v.ink), acc: col(v.acc), font: FONTS.some(([f]) => f === v.font) ? v.font : undefined, subFont: FONTS.some(([f]) => f === v.subFont) ? v.subFont : undefined,
       textScale: num(v.textScale, 0.6, 1.6), subScale: num(v.subScale, 0.6, 1.8), subPos: ['auto', 'top', 'middle', 'bottom'].includes(v.subPos) ? v.subPos : undefined, subLook: ['box', 'outline', 'plain'].includes(v.subLook) ? v.subLook : undefined,
       subColor: v.subColor === 'auto' || /^#[0-9a-f]{6}$/i.test(v.subColor || '') ? v.subColor : undefined, q: [720, 1080, 1440, 2160].includes(v.q) ? v.q : undefined, artSeeds: obj(v.artSeeds), artHist: obj(v.artHist), artVers: obj(v.artVers), lastArt: typeof v.lastArt === 'string' ? v.lastArt : undefined, colourSeed: Number.isInteger(v.colourSeed) ? v.colourSeed : undefined, mode: v.mode === 'music' ? 'music' : undefined, wmStyle: v.wmStyle === 'sig' || v.wmStyle === 'text' ? v.wmStyle : undefined,
+      cover: obj(v.cover) ? { text: v.cover.text === 'own' ? 'own' : 'built', motion: GroklyArt.NYC_MOTIONS.some(([k]) => k === v.cover.motion) ? v.cover.motion : '', intro: ['loop', 'off'].includes(v.cover.intro) ? v.cover.intro : 'once',
+        font: v.cover.font === 'mine' || GroklyArt.NYC_FONTS.some(([k]) => k === v.cover.font) ? v.cover.font : '', pal: v.cover.pal === 'mine' || GroklyArt.NYC_PALS.some(([k]) => k === v.cover.pal) ? v.cover.pal : '',
+        photo: v.cover.photo === true, wave: ['bars', 'line', 'mirror', 'dots'].includes(v.cover.wave) ? v.cover.wave : 'off' } : undefined,
       mv: obj(v.mv) ? { arts: Array.isArray(v.mv.arts) ? v.mv.arts.filter((x) => GroklyArt.ART.some(([id]) => id === x)).slice(0, 6) : [], style: ['calm', 'pulse', 'fast'].includes(v.mv.style) ? v.mv.style : 'calm', trans: ['xfade', 'mix'].includes(v.mv.trans) ? v.mv.trans : 'cut', pulse: v.mv.pulse === true, seed: Number.isInteger(v.mv.seed) ? v.mv.seed : 1, hist: Array.isArray(v.mv.hist) ? v.mv.hist.filter(Number.isInteger).slice(-20) : [] } : undefined,
       layout: obj(v.layout) && Object.fromEntries(Object.entries(v.layout).filter(([, m]) => obj(m)).map(([k, m]) => [k, Object.fromEntries(Object.entries(m).filter(([, o]) => o && typeof o === 'object' && Math.abs(o.x || 0) <= 1 && Math.abs(o.y || 0) <= 1 && (o.s == null || (o.s >= 0.2 && o.s <= 4)) && (o.hide == null || typeof o.hide === 'boolean')))])) };
     for (const k in ok) if (ok[k] !== undefined) S[k] = ok[k];
@@ -1957,7 +2005,7 @@ $('drawOpen').onclick = openPaint;
   S.full = await sampleBeat(); S.pcm = S.full; S.feats = E.analyze(S.pcm, FPS); S.subs = SAMPLE_SUBS.map((s) => ({ ...s, sample: true })); renderLines(); drawWave();
   setSeg('mvStyle', 'v', S.mv.style); setSeg('mvTrans', 'v', S.mv.trans); buildMvArts();
   { const qm = new URLSearchParams(location.search).get('mode'); if (qm === 'music') setMode('music'); else if (qm === 'voice' && S.mode !== 'voice') setMode('voice'); else if (S.mode === 'music') setMode('music', true); } // ?mode=voice or ?mode=music opens that editor; a saved music video still comes back after a reload
-  buildArtChips(); buildCovers(); await setupPreview(); drawPreview(40); buildChips(); requestAnimationFrame(idleTick);
+  buildArtChips(); buildCovers(); showCoverOpts(); await setupPreview(); drawPreview(40); buildChips(); requestAnimationFrame(idleTick);
   // before any export: say so if this browser can't make MP4 (X, Instagram and TikTok need it)
   (async () => { try { const ok = (await pickVideoCodec(1080, 1350)) && (await aacOK()); $('mp4Note').hidden = !!ok; } catch { $('mp4Note').hidden = false; } })();
   if (coarse) $('layoutTip').textContent = 'Tip: tap an item on the preview to select it, then drag, pinch, or use its × (delete), + (duplicate) and corner handle. Swipe anywhere else to scroll.';
