@@ -74,7 +74,7 @@
     return (nb ? b / nb : 0) - (na ? a / na : 0) + 0.5 * ((feats[i] && (feats[i].onset || 0)) || 0);
   }
   // plan → { seed, style, trans, bpm, conf, shots: [{ start, end (frames), art, seed, xfade (frames) }] }
-  function plan(feats, { arts, style = 'calm', trans = 'cut', seed = 1, fps = 30, minGap = 0.5, grid = null } = {}) {
+  function plan(feats, { arts, style = 'calm', trans = 'cut', seed = 1, fps = 30, minGap = 0.5, grid = null, pulse = false } = {}) {
     const N = feats.length, rng = mulberry32(seed >>> 0), g = grid || beatGrid(feats, fps), cuts = [], minF = Math.round(minGap * fps), lastHold = fps; // ≥ 1 s last shot
     const S = STYLES[style] || STYLES.calm;
     const beat = !!(g && (g.isBeat !== undefined ? g.isBeat : g.conf > 1.25)), start = g && g.start != null ? g.start : musicStart(feats, fps);
@@ -106,9 +106,25 @@
     for (let s = 0; s < bounds.length - 1; s++) {
       let art = pool[s % pool.length]; if (shots.length && art === shots[shots.length - 1].art && pool.length > 1) art = pool[(s + 1) % pool.length];
       const len = bounds[s + 1] - bounds[s];
-      shots.push({ start: bounds[s], end: bounds[s + 1], art, seed: shotSeed(art), xfade: trans === 'xfade' && s > 0 ? Math.max(2, Math.min(8, Math.round(fps * 0.2), Math.floor(len / 3))) : 0 });
+      const sh = { start: bounds[s], end: bounds[s + 1], art, seed: shotSeed(art), xfade: trans === 'xfade' && s > 0 ? Math.max(2, Math.min(8, Math.round(fps * 0.2), Math.floor(len / 3))) : 0 };
+      if (trans === 'mix' && s > 0) Object.assign(sh, beatTransition(feats, sh.start, len, g, fps, beat, seed, s, shots[s - 1] && shots[s - 1].tr && shots[s - 1].tr.type));
+      shots.push(sh);
     }
-    return { seed, style, trans, fps, bpm: g ? +g.bpm.toFixed(1) : 0, conf: g ? +g.conf.toFixed(2) : 0, beat, start, shots, beatTimes: g ? g.beatTimes : [] };
+    // beat pulse camera: frame numbers of the beats (and which are downbeats), so the zoom is a pure function of the frame
+    const pb = pulse && beat && g ? { beats: g.beats.map((x) => Math.round(x)), down: new Set((g.downbeats || []).map((x) => Math.round(x))) } : null;
+    return { seed, style, trans, pulse: !!pb, pulseBeats: pb, fps, bpm: g ? +g.bpm.toFixed(1) : 0, conf: g ? +g.conf.toFixed(2) : 0, beat, start, shots, beatTimes: g ? g.beatTimes : [] };
+  }
+  // ---------- Beat mix: a transition per cut, chosen from the sound at the cut ----------
+  // Length: half a beat (a quarter of a bar on slow songs), 4–12 frames, never more than a third of the shot. Kind: a big energy rise
+  // gets a hit (zoom punch, flash, glitch); a gentle cut gets a movement (wipe, push, iris, crossfade). Its own random stream
+  // (seed + shot number), so changing only the transition keeps the same cuts, artworks and seeds.
+  const TR_HIT = ['zoom', 'flash', 'glitch', 'zoom'], TR_MOVE = ['wipe', 'push', 'iris', 'xfade', 'wipe', 'push'];
+  function beatTransition(feats, at, len, g, fps, beat, seed, k, prev) {
+    const r = mulberry32(hashStr(`${seed}|tr|${k}`)), per = beat && g && g.bpm ? (60 / g.bpm) * fps : fps * 0.5;
+    const n = Math.max(4, Math.min(12, Math.round(per * 0.5), Math.floor(len / 3))), f = feats[Math.round(at)] || {}, up = rise(feats, at, fps) - 0.5 * (f.onset || 0); // the loudness change alone (almost every downbeat has an onset)
+    const pool = up > 0.12 || r() < 0.25 ? TR_HIT : TR_MOVE; let type = pool[Math.floor(r() * pool.length)];
+    if (type === prev) type = pool[(pool.indexOf(type) + 1 + Math.floor(r() * (pool.length - 1))) % pool.length]; // never the same one twice in a row
+    return { xfade: n, tr: { type, dir: Math.floor(r() * 4), x: 0.3 + r() * 0.4, y: 0.3 + r() * 0.4 } }; // dir: from the left, right, top, bottom; x, y: the iris centre
   }
   const shotAt = (p, i) => { const sh = p.shots; let lo = 0, hi = sh.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (sh[m].start <= i) lo = m; else hi = m - 1; } return lo; };
 
@@ -124,7 +140,7 @@
   function makeMixer(makeSource) {
     const cv = document.createElement('canvas'), g = cv.getContext('2d'); cv.width = cv.height = 2;
     const pool = [makeSource(), makeSource(), makeSource()], slot = new Map(); // shot index → source
-    const thumbs = new Map(), thumb = (id) => { if (!thumbs.has(id)) { const im = new Image(); im.onload = () => (dirty = true); im.src = `art/_thumbs/${id}.jpg`; thumbs.set(id, im); } return thumbs.get(id); };
+    const thumbs = new Map(), thumb = (id) => { if (!thumbs.has(id)) { const nyc = root.GroklyArt && GroklyArt.nycNum(id); if (nyc) { thumbs.set(id, GroklyArt.thumbCanvas(id, () => (dirty = true))); return thumbs.get(id); } const im = new Image(); im.onload = () => (dirty = true); im.src = `art/_thumbs/${id}.jpg`; thumbs.set(id, im); } return thumbs.get(id); }; // NYC pack: a canvas cut from its sprite sheet (complete once drawn)
     const idle = (fn) => (window.requestIdleCallback ? requestIdleCallback(fn, { timeout: 300 }) : setTimeout(fn, 0));
     let P = null, W = 540, H = 675, gen = 0, hold = null, exporting = false, dirty = false; // hold: { k: shot that was late, fade: frames into its fade-in }
     // dirty: something new to show (a new edit, or an artwork finished loading). A paused preview redraws only then.
@@ -145,7 +161,39 @@
       const used = new Set(slot.values()), s = pool.find((x) => !used.has(x)); if (!s) return null;
       slot.set(k, s); start(s, k, now); return s;
     }
-    const cover = (c, a) => { const w = c.naturalWidth || c.width, h = c.naturalHeight || c.height; if (!w || w < 4) return false; const sc = Math.max(cv.width / w, cv.height / h); g.globalAlpha = a; g.drawImage(c, (cv.width - w * sc) / 2, (cv.height - h * sc) / 2, w * sc, h * sc); g.globalAlpha = 1; return true; };
+    // cover: object-fit cover, times the camera zoom (beat pulse) and an optional extra scale / offset (transitions), about the centre
+    let zoom = 1;
+    const cover = (c, a, k = 1, dx = 0, dy = 0) => { const w = c.naturalWidth || c.width, h = c.naturalHeight || c.height; if (!w || w < 4) return false; const sc = Math.max(cv.width / w, cv.height / h) * zoom * k; g.globalAlpha = a; g.drawImage(c, (cv.width - w * sc) / 2 + dx, (cv.height - h * sc) / 2 + dy, w * sc, h * sc); g.globalAlpha = 1; return true; };
+    const io = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2), out3 = (x) => 1 - Math.pow(1 - x, 3);
+    // one transition frame, p in (0, 1]: a from the previous shot, b the new one. Always drawn from the two pictures (never through black)
+    function transition(a, b, p, tr, i) {
+      const W = cv.width, H = cv.height, t = tr.type, e = io(p);
+      if (t === 'wipe' || t === 'push') {
+        const hz = tr.dir < 2, sg = tr.dir % 2 ? -1 : 1, D = hz ? W : H, m = e * D; // the new picture comes in from one side
+        if (t === 'push') { const o = sg * m; cover(a, 1, 1, hz ? o : 0, hz ? 0 : o); cover(b, 1, 1, hz ? o - sg * D : 0, hz ? 0 : o - sg * D); return; }
+        cover(a, 1); g.save(); g.beginPath(); if (hz) g.rect(sg > 0 ? 0 : W - m, 0, m, H); else g.rect(0, sg > 0 ? 0 : H - m, W, m); g.clip(); cover(b, 1); g.restore();
+        g.save(); g.globalAlpha = 0.85 * Math.sin(Math.PI * p); g.fillStyle = '#fff'; const lw = Math.max(2, D * 0.006); if (hz) g.fillRect(sg > 0 ? m - lw / 2 : W - m - lw / 2, 0, lw, H); else g.fillRect(0, sg > 0 ? m - lw / 2 : H - m - lw / 2, W, lw); g.restore(); return;
+      }
+      if (t === 'iris') { const cx = tr.x * W, cy = tr.y * H, R = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) * out3(p); cover(a, 1, 1 + 0.04 * p); g.save(); g.beginPath(); g.arc(cx, cy, Math.max(0.5, R), 0, 7); g.clip(); cover(b, 1, 1.06 - 0.06 * p); g.restore(); return; }
+      if (t === 'zoom') { // punch in: the old picture rushes forward and fades, the new one lands from slightly bigger, a short flash on the hit
+        cover(a, 1, 1 + 0.35 * e); cover(b, Math.min(1, p * 1.8), 1.18 - 0.18 * out3(p));
+        g.save(); g.globalAlpha = 0.55 * Math.pow(1 - p, 2.5); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.restore(); return;
+      }
+      if (t === 'flash') { const f = p < 0.5 ? p * 2 : (1 - p) * 2; cover(p < 0.5 ? a : b, 1, 1 + 0.03 * f); g.save(); g.globalAlpha = Math.min(1, f * 1.15); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.restore(); return; }
+      if (t === 'glitch') { // horizontal slices switch to the new picture one by one, displaced while they switch (a pure function of the frame)
+        const N = 14, hh = H / N, amp = W * 0.06 * Math.sin(Math.PI * p);
+        cover(a, 1);
+        for (let k = 0; k < N; k++) { const hsh = ((Math.imul(k + 1, 2654435761) ^ Math.imul(i + 7, 40503)) >>> 0) / 4294967296, on = hsh < p * 1.25 - 0.1; const sh = (hsh - 0.5) * 2 * amp;
+          g.save(); g.beginPath(); g.rect(0, k * hh, W, hh + 1); g.clip(); if (on) cover(b, 1, 1, sh, 0); else if (Math.abs(sh) > amp * 0.6) cover(a, 1, 1, sh, 0); g.restore(); }
+        if (p < 0.85) { g.save(); g.globalCompositeOperation = 'screen'; g.globalAlpha = 0.25 * Math.sin(Math.PI * p); cover(b, 1, 1, amp * 0.35, 0); g.restore(); }
+        return;
+      }
+      cover(a, 1); cover(b, p); // xfade
+    }
+    // beat pulse: a small zoom on each beat (bigger on the downbeat) that settles in ~0.3 s
+    function pulseAt(i) { const B = P && P.pulseBeats; if (!B || !B.beats.length) return 1; let lo = 0, hi = B.beats.length - 1; if (B.beats[0] > i) return 1;
+      while (lo < hi) { const m = (lo + hi + 1) >> 1; if (B.beats[m] <= i) lo = m; else hi = m - 1; } const b0 = B.beats[lo], dt = (i - b0) / (P.fps || 30);
+      return 1 + (B.down.has(b0) ? 0.045 : 0.022) * Math.exp(-dt * 9); }
     return {
       canvas: cv,
       // a new edit. Sources already running the new edit's first two shots (same artwork and seed, e.g. after a change of cut
@@ -173,7 +221,7 @@
       // are composed again, which is cheap. Call it only when `dirty` says there is something new to show.
       frame(i, f, t, still = false) {
         if (!P || !P.shots.length) return; const k = shotAt(P, i), x = P.shots[k];
-        const fading = x.xfade && k > 0 && i < x.start + x.xfade;
+        const fading = x.xfade && k > 0 && i < x.start + x.xfade; zoom = pulseAt(i);
         const curReady0 = slot.has(k) && isReady(slot.get(k), k), late = !still && hold && hold.k === k && hold.fade < 8;
         // keep the previous shot alive while the current one is not ready (preview), during a crossfade, or while a late
         // artwork fades in over it; the next shot always loads meanwhile, so one late artwork never delays the cuts after it
@@ -192,9 +240,9 @@
           if (prevReady) cover(prev.canvas, 1); else { const im = thumb(x.art); if (im.complete) { cover(im, 1); if (still) dirty = false; } }
           return;
         }
-        if (fading && prevReady) { const a = (i - x.start + 1) / (x.xfade + 1); cover(prev.canvas, 1); cover(cur.canvas, a); return; } // crossfade, never through white or black
+        if (fading && prevReady) { const a = (i - x.start + 1) / (x.xfade + 1); if (x.tr) transition(prev.canvas, cur.canvas, a, x.tr, i); else { cover(prev.canvas, 1); cover(cur.canvas, a); } return; } // crossfade / Beat mix, never through black
         if (late) { hold.fade++; if (prevReady) cover(prev.canvas, 1); else { const im = thumb(x.art); if (im.complete) cover(im, 1); } cover(cur.canvas, hold.fade / 8); return; } // late artwork: soft fade-in
-        hold = null; cover(cur.canvas, 1);
+        hold = null; if (zoom !== 1) g.clearRect(0, 0, cv.width, cv.height); cover(cur.canvas, 1);
       },
       shotAt: (i) => (P ? shotAt(P, i) : 0),
       get dirty() { return dirty; },
@@ -206,6 +254,7 @@
       destroy() { gen++; for (const s of pool) close(s); slot.clear(); g.clearRect(0, 0, cv.width, cv.height); },
     };
   }
-  const api = { beatGrid, plan, shotAt, makeMixer, STYLES, mulberry32 };
+  const TRANS = { cut: 'Hard cut', xfade: 'Short crossfade', mix: 'Beat mix' };
+  const api = { beatGrid, plan, shotAt, makeMixer, STYLES, TRANS, mulberry32 };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.GroklyMV = api;
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -311,6 +311,16 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
 .pillWarn { opacity: .85; font-size: 12.5px; }
 .confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: var(--card); border: 1.5px solid var(--coral); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
 .seg.mode { justify-self: start; }
+.nycsets { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.nycsets button { appearance: none; border: 1px solid var(--line, #ccc); background: var(--paper); color: var(--ink); border-radius: 999px; padding: 5px 11px; font: 500 12px/1 var(--body); cursor: pointer; }
+.nycsets button[aria-pressed="true"] { border-color: var(--teal); background: var(--teal); color: #fff; }
+.covers { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; max-height: 340px; overflow-y: auto; padding: 2px; }
+.covers button, .nycart button { appearance: none; border: 2px solid transparent; border-radius: 10px; padding: 3px; background: var(--paper); cursor: pointer; display: grid; gap: 3px; font: 500 10.5px/1.15 var(--body); color: var(--ink); text-align: left; }
+.covers button[aria-pressed="true"], .nycart button[aria-pressed="true"] { border-color: var(--teal); }
+.covers i, .nycart i { display: block; width: 100%; aspect-ratio: 16 / 9; border-radius: 6px; }
+.artgrid .nycsets, .artgrid .nycart { grid-column: 1 / -1; }
+.nycart { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; max-height: 320px; overflow-y: auto; padding: 2px; }
+.nycart i { aspect-ratio: 4 / 5; }
 .mvArts { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 8px; }
 .mvArts button { appearance: none; border: 2px solid transparent; border-radius: 10px; padding: 3px; background: var(--paper); cursor: pointer; display: grid; gap: 3px; font: 500 11px/1.15 var(--body); color: var(--ink); }
 .mvArts button[aria-pressed="true"] { border-color: var(--teal); }
@@ -461,6 +471,9 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
           <h3>Story</h3><div class="styles" data-group="story"></div>
           <h3>YouTube</h3><div class="styles" data-group="wide"></div>
           <h3>Or make your own</h3><div class="styles" data-group="wave"></div>
+          <h3>Generative covers <span class="note">320 moving designs · they follow your voice or music</span></h3>
+          <div class="nycsets" id="coverSets" role="group" aria-label="Kind of cover"></div>
+          <div class="covers" id="coverGrid" role="group" aria-label="Generative covers"></div>
           <div class="row" id="fmtRow">
             <div class="seg" id="fmt" role="group" aria-label="Video shape"><button data-f="post" aria-pressed="true">Post 4:5</button><button data-f="square" aria-pressed="false">Square</button><button data-f="story" aria-pressed="false">Story 9:16</button><button data-f="wide" aria-pressed="false">Wide 16:9</button></div>
           </div>
@@ -546,9 +559,13 @@ footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
         <div class="pane" id="p-mv" role="tabpanel" hidden>
           <div class="note">Pick 2 to 6 artworks. Milani cuts between them on the beat of your music, and each artwork moves with the sound.</div>
           <div class="mvArts" id="mvArts" role="group" aria-label="Artworks in the music video"></div>
+          <h3>Generative codes · NYC pack <span class="note">add them to the edit too</span></h3>
+          <div class="nycsets" id="mvSets" role="group" aria-label="Kind of generative code"></div>
+          <div class="nycart" id="mvNyc" role="group" aria-label="Generative codes in the music video" hidden></div>
           <div class="row"><button class="btn small" id="mvPick">Pick for me</button><span class="note" id="mvCount"></span></div>
           <h3>Cuts</h3><div class="seg" id="mvStyle" role="group" aria-label="Cut style"><button data-v="calm" aria-pressed="true">Calm · every 2–4 bars</button><button data-v="pulse" aria-pressed="false">Pulse · every bar</button><button data-v="fast" aria-pressed="false">Fast · every 2 beats</button></div>
-          <h3>Transition</h3><div class="seg" id="mvTrans" role="group" aria-label="Transition"><button data-v="cut" aria-pressed="true">Hard cut</button><button data-v="xfade" aria-pressed="false">Short crossfade</button></div>
+          <h3>Transition</h3><div class="seg" id="mvTrans" role="group" aria-label="Transition"><button data-v="cut" aria-pressed="true">Hard cut</button><button data-v="xfade" aria-pressed="false">Short crossfade</button><button data-v="mix" aria-pressed="false">Beat mix · wipes, zooms, flashes</button></div>
+          <h3>Camera</h3><div class="seg" id="mvPulse" role="group" aria-label="Camera"><button data-v="still" aria-pressed="true">Still</button><button data-v="pulse" aria-pressed="false">Pulse on the beat</button></div>
           <div class="row"><button class="btn generate" id="mvGen">New edit</button><button class="btn small" id="mvBack" disabled>Back</button></div>
           <div class="note" id="mvNote" role="status" aria-live="polite"></div>
           <div class="shots" id="mvShots" aria-label="Shot list"></div>
@@ -687,7 +704,9 @@ const store = { get(k) { try { return localStorage.getItem(k); } catch { return 
 const artSeedOf = (id) => S.artSeeds[id] || GroklyArt.defaultSeed;
 const picIsArt = () => S.pic.kind === 'art';
 const isDrawing = () => picIsArt() && S.pic.id === 'drawing';
-const kindOf = (s) => (s.startsWith('card:') ? 'card' : s === 'full' ? 'full' : 'wave');
+const isCover = (s) => typeof s === 'string' && s.startsWith('cover:'), coverNum = (s) => +String(s).slice(6) || 0; // the NYC pack's cover designs ("cover:1"…"cover:320")
+const isFull = (s) => s === 'full' || isCover(s); // a picture that fills the frame (the Full design, or a cover design)
+const kindOf = (s) => (s.startsWith('card:') ? 'card' : isFull(s) ? 'full' : 'wave');
 const isCard = (s) => s.startsWith('card:'), cardFmt = (s) => (CARDS.find(([n]) => 'card:' + n === s) || [])[1];
 const fmtT = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 // where subtitles sit by default on each template (fraction of height): over the photo, away from titles and bars
@@ -898,8 +917,8 @@ function opts(scale) {
   const card = isCard(S.style), [bw, bh] = card ? CARD_SIZE[cardFmt(S.style)] : FMT[S.fmt];
   const ev = (n) => Math.max(2, Math.round((n * scale) / 2) * 2);
   return { style: S.style.replace('card:', ''), title: $('title').value.trim(), sub: $('name').value.trim(), avatar: S.avatar, watermark: wmOn() ? wmText() : '', // Grokly Pass: wmOn()
-    theme: S.bg && luminance(S.bg) > 0.5 ? 'light' : 'dark', paper: S.bg, ink: S.ink, accent: S.acc, font: S.font, textScale: S.textScale, seed: 7, badge: picIsArt() || (S.bgImage && S.style === 'full') ? S.avatar : null, guest: S.guest, guestName: $('guestName').value.trim(), bgImage: S.bgImage, layout: layoutOf(), boxPics: boxPicsFor(), wmSig: S.wmStyle === 'sig' && SIG ? SIG : null, markLast: true /* the watermark is drawn after the subtitles (drawSubs) */, W: ev(bw), H: ev(bh), keepSize: true,
-    artShort: scale < 1 ? Math.round(Math.min(bw, bh) * scale) : Math.min(S.style === 'full' ? 1440 : 900, Math.round(Math.min(bw, bh) * scale)) }; // behind a template the artwork is a background: 900 px is plenty and much faster to export
+    theme: S.bg && luminance(S.bg) > 0.5 ? 'light' : 'dark', paper: S.bg, ink: S.ink, accent: S.acc, font: S.font, textScale: S.textScale, seed: 7, badge: !isCover(S.style) && (picIsArt() || (S.bgImage && S.style === 'full')) ? S.avatar : null, guest: S.guest, guestName: $('guestName').value.trim(), bgImage: S.bgImage, layout: layoutOf(), boxPics: boxPicsFor(), wmSig: S.wmStyle === 'sig' && SIG ? SIG : null, markLast: true /* the watermark is drawn after the subtitles (drawSubs) */, W: ev(bw), H: ev(bh), keepSize: true,
+    artShort: scale < 1 ? Math.round(Math.min(bw, bh) * scale) : Math.min(isFull(S.style) ? 1440 : 900, Math.round(Math.min(bw, bh) * scale)) }; // behind a template the artwork is a background: 900 px is plenty and much faster to export
 }
 // Grokly Pass: the checkbox only counts with collector credits; free (or web3-pass.js missing) ⇒ the mark is always on
 const wmOn = () => (window.GroklyPass ? GroklyPass.showWatermark(S.wm) : true);
@@ -940,7 +959,7 @@ function drawSubsOne(g, W, H, s, st, lo, id) {
   s.cut = lines.length > 4; if (s.cut) { lines.splice(4); lines[3] = lines[3].replace(/\s*\S?$/, '…'); }
   const block = lines.length * lh, pp = POS_Y[st.style] || WAVE_POS;
   const y0 = st.subPos === 'top' ? H * pp[0] : st.subPos === 'bottom' ? H * pp[1] - block : st.subPos === 'middle' ? H * 0.5 - block / 2
-    : (() => { const pos = (st.guest && AUTO_Y_GUEST[st.style]) || (AUTO_Y[st.style] ?? (st.style === 'full' ? 0.6 : null)); return pos == null ? H * WAVE_POS[1] - block : pos <= 0.25 ? H * pos : pos >= 0.75 ? H * pos - block : H * pos - block / 2; })();
+    : (() => { const pos = (st.guest && AUTO_Y_GUEST[st.style]) || (AUTO_Y[st.style] ?? (isFull(st.style) ? 0.6 : null)); return pos == null ? H * WAVE_POS[1] - block : pos <= 0.25 ? H * pos : pos >= 0.75 ? H * pos - block : H * pos - block / 2; })();
   const widest = Math.max(...lines.map((l) => g.measureText(l).width));
   // the user can drag the subtitles: offset per template + shape
   let cx = W / 2 + (lo.x || 0) * W, yy = y0 + (lo.y || 0) * H;
@@ -1027,9 +1046,16 @@ const artTitle = (id) => (id === 'drawing' ? 'My drawing' : (GroklyArt.ART.find(
 // the artwork's window: same shape as the video, short side = artShort
 const imgOf = (src) => new Promise((r) => { const i = new Image(); i.onload = () => r(i); i.onerror = () => r(null); i.src = src; });
 async function preparePicture(source, o, st = S) { // st: the live state, or an export job's frozen snapshot
+  window.GroklyNYC = window.GroklyNYC || {}; GroklyNYC.text = { title: o.title, name: o.sub, guest: o.guestName }; // read by the NYC pack's frames
   if (st.mode === 'music' && st.mvPlan) { // Music video: the cut-between-artworks canvas is the picture
-    source.destroy(); const mix = st.mvMix || pvMix, sc = o.artShort / Math.min(o.W, o.H), w = Math.round(o.W * sc), h = Math.round(o.H * sc), key = `${st.mvPlan.seed}|${st.mvPlan.shots.length}|${st.mvPlan.style}|${st.mvPlan.trans}|${st.mvPlan.shots.map((x) => x.art).join()}|${w}x${h}`;
+    source.destroy(); const mix = st.mvMix || pvMix, sc = o.artShort / Math.min(o.W, o.H), w = Math.round(o.W * sc), h = Math.round(o.H * sc), key = `${st.mvPlan.seed}|${st.mvPlan.shots.length}|${st.mvPlan.style}|${st.mvPlan.trans}|${st.mvPlan.pulse}|${st.mvPlan.shots.map((x) => x.art).join()}|${w}x${h}`;
     if (mix.__key !== key) { mix.setPlan(st.mvPlan, w, h); mix.__key = key; } return mix.canvas;
+  }
+  if (isCover(st.style)) { // a cover design: the whole NYC template, with the visitor's text and photo, is the picture
+    window.GroklyNYC = window.GroklyNYC || {}; GroklyNYC.photo = st.avatar ? await imgOf(st.avatar) : null; o.noOverlay = true;
+    const sc = o.artShort / Math.min(o.W, o.H);
+    await source.setup({ id: GroklyArt.nycId(coverNum(st.style)), mode: 'cover', text: { title: o.title, name: o.sub, guest: o.guestName }, seed: st.artSeeds[st.style] || GroklyArt.defaultSeed, w: Math.round(o.W * sc), h: Math.round(o.H * sc) });
+    return source.canvas;
   }
   if (st.pic.kind !== 'art') { source.destroy(); return st.bgImage && st.style === 'full' ? imgOf(st.bgImage) : null; } // Full: the background image fills the frame
   const sc = o.artShort / Math.min(o.W, o.H);
@@ -1052,9 +1078,9 @@ async function setupPreview() {
   document.querySelectorAll('#artGrid .chip').forEach((x) => x.setAttribute('aria-pressed', String(picIsArt() && x.dataset.a === S.pic.id)));
   drawPreview(curFrame());
   $('fmtRow').hidden = card;
-  $('colorNote').textContent = (S.style === 'full' ? 'On the full picture design the picture stays as it is; the colours apply to the title, name, accents and subtitles (Subtitle colour: Auto).' : 'Background, lines and text, and accent colours apply to this design and to the subtitles (Subtitle colour: Auto).')
+  $('colorNote').textContent = (isCover(S.style) ? 'A cover design keeps its own colours; the colours apply to the subtitles (Subtitle colour: Auto).' : S.style === 'full' ? 'On the full picture design the picture stays as it is; the colours apply to the title, name, accents and subtitles (Subtitle colour: Auto).' : 'Background, lines and text, and accent colours apply to this design and to the subtitles (Subtitle colour: Auto).')
     + (picIsArt() || S.bgImage ? ' The background colour shows only where the artwork or background image does not cover it.' : '');
-  { const issues = S.style === 'full' ? [] : GC.check({ bg: S.bg || (card ? '#ffffff' : '#0c0c0d'), ink: S.ink, acc: S.acc }), w = $('colorWarn'); w.textContent = ''; w.hidden = !issues.length;
+  { const issues = isFull(S.style) ? [] : GC.check({ bg: S.bg || (card ? '#ffffff' : '#0c0c0d'), ink: S.ink, acc: S.acc }), w = $('colorWarn'); w.textContent = ''; w.hidden = !issues.length;
     for (const x of issues) { const line = document.createElement('div'); line.append(`${x.pair}: ${x.ratio.toFixed(1)}:1, needs ${x.need}:1${x.key === 'ink' ? ' to read on a phone' : ''}.`);
       const fb = document.createElement('button'); fb.className = 'btn small'; fb.textContent = 'Fix'; fb.onclick = () => { S[x.key] = x.fix(); refreshSwatches(); markPreset(); colourPicked(); }; line.append(fb); w.append(line); } }
   layoutChanged(); updateXNote(); saveState();
@@ -1063,7 +1089,7 @@ function drawPreview(i) {
   const F = (window.GroklyMusic && GroklyMusic.feats(S.pcm, FPS)) || S.feats; // Background music: the art follows voice + music once the mix is analysed
   if (!pv.e || !F) return; i = Math.max(0, Math.min(F.length - 1, i));
   const f = F[i] || idle;
-  if (picIsArt() && !mvOn()) pvSrc.step(f, i / FPS);
+  if ((picIsArt() || isCover(S.style)) && !mvOn()) pvSrc.step(f, i / FPS); // an artwork, or a cover design (it moves with the sound too)
   if (mvOn() && S.mvPlan) { pvMix.frame(i, f, i / FPS, !src); markShot(pvMix.shotAt(i)); } // paused: the artworks are not stepped (cheap)
   lastI = i; pv.e.speaker = speakerAt(i / FPS, S);
   pv.e.drawFrame(f, i / FPS); checkSubsOverPicture(); drawSubs(pv.cv.getContext('2d'), pv.cv.width, pv.cv.height, i / FPS); drawSel();
@@ -1071,14 +1097,19 @@ function drawPreview(i) {
 // ---------- Music video: cut between artworks on the beat (music-video.js) ----------
 const pvMix = GroklyMV.makeMixer(GroklyArt.makeSource);
 const mvOn = () => S.mode === 'music';
+const thumbUrls = {}; // a small JPEG per NYC thumbnail (cut from its sprite sheet), for <img> elements
+const thumbSrc = (id) => { if (!GroklyArt.nycNum(id)) return `art/_thumbs/${id}.jpg`; if (thumbUrls[id]) return thumbUrls[id];
+  const c = GroklyArt.thumbCanvas(id); if (c && c.complete) return (thumbUrls[id] = c.toDataURL('image/jpeg', 0.8)); GroklyArt.thumbCanvas(id, () => { thumbUrls[id] = c.toDataURL('image/jpeg', 0.8); document.querySelectorAll(`img[data-thumb="${id}"]`).forEach((im) => (im.src = thumbUrls[id])); }); return 'data:image/gif;base64,R0lGODlhAQABAAAAACw='; };
 const artName = (id) => (GroklyArt.ART.find(([x]) => x === id) || [id, id])[1];
-function mvAuto(seed) { const r = GroklyMV.mulberry32(seed >>> 0), ids = GroklyArt.ART.map(([x]) => x); for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; } return ids.slice(0, 4); }
+function mvAuto(seed) { // two of Reza Milani's artworks and two generative codes from the NYC pack (lighter ones: no WebGL set)
+  const r = GroklyMV.mulberry32(seed >>> 0), sh = (ids) => { for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; } return ids; };
+  const a = sh(GroklyArt.ORIGINAL.map(([x]) => x)), b = sh(GroklyArt.NYC.filter((x) => x.set !== 'f').map((x) => x.id)); return [a[0], b[0], a[1], b[1]]; }
 const mvArts = () => (S.mv.arts.length >= 2 ? S.mv.arts : mvAuto(S.mv.seed));
 let mvTimer = 0, mvPvTimer = 0;
 function mvRebuild(now) {
   clearTimeout(mvTimer); if (!mvOn() || !S.feats) return;
   // the edit itself is instant; loading its artworks waits until the taps stop (each start of a heavy piece costs main-thread time)
-  const go = () => { S.mvPlan = GroklyMV.plan(S.feats, { arts: mvArts(), style: S.mv.style, trans: S.mv.trans, seed: S.mv.seed, fps: FPS }); renderShots(); saveState(); clearTimeout(mvPvTimer); mvPvTimer = setTimeout(setupPreview, 350); };
+  const go = () => { S.mvPlan = GroklyMV.plan(S.feats, { arts: mvArts(), style: S.mv.style, trans: S.mv.trans, pulse: !!S.mv.pulse, seed: S.mv.seed, fps: FPS }); renderShots(); saveState(); clearTimeout(mvPvTimer); mvPvTimer = setTimeout(setupPreview, 350); };
   if (now) go(); else mvTimer = setTimeout(go, 350); // taps in a row (artworks, cut style) make one new edit
 }
 function seekTo(sec) { const playing = !!src; if (playing) stop(); pausedAt = Math.max(0, Math.min(S.pcm.length / SR - 0.05, sec)); drawPreview(Math.round(pausedAt * FPS)); if (playing) $('play').click(); }
@@ -1088,10 +1119,10 @@ $('wave').style.cursor = 'pointer'; $('wave').title = 'Click to play from here';
 $('mvShots').addEventListener('click', (ev) => { const d = ev.target.closest('[data-k]'); if (d && S.mvPlan) seekTo(S.mvPlan.shots[+d.dataset.k].start / FPS); });
 function renderShots() {
   const P = S.mvPlan, box = $('mvShots'); box.innerHTML = ''; if (!P) return;
-  $('mvNote').textContent = (P.beat ? `${Math.round(P.bpm)} BPM · ` : 'No steady beat found, so the cuts follow the strongest sounds · ') + `${P.shots.length} shot${P.shots.length > 1 ? 's' : ''} · ${GroklyMV.STYLES[P.style].label.toLowerCase()} cuts`;
+  $('mvNote').textContent = (P.beat ? `${Math.round(P.bpm)} BPM · ` : 'No steady beat found, so the cuts follow the strongest sounds · ') + `${P.shots.length} shot${P.shots.length > 1 ? 's' : ''} · ${GroklyMV.STYLES[P.style].label.toLowerCase()} cuts` + (P.trans === 'mix' ? ' · beat-mix transitions' : '') + (P.pulse ? ' · camera pulses on the beat' : S.mv.pulse && !P.beat ? ' · no steady beat, so the camera stays still' : '');
   // times in tenths of a second; shots that start after the free video's end are dimmed and marked as not included
   const cap = window.GroklyPass ? freeCap() : 30, fmtT1 = (s) => `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, '0')}`; let nIn = 0;
-  P.shots.forEach((x, k) => { const d = document.createElement('div'), im = document.createElement('img'), t = x.start / FPS, out = cap > 0 && t >= cap; im.src = `art/_thumbs/${x.art}.jpg`; im.alt = artName(x.art); im.loading = 'lazy';
+  P.shots.forEach((x, k) => { const d = document.createElement('div'), im = document.createElement('img'), t = x.start / FPS, out = cap > 0 && t >= cap; im.src = thumbSrc(x.art); im.dataset.thumb = x.art; im.alt = artName(x.art); im.loading = 'lazy';
     d.title = `${artName(x.art)} from ${fmtT1(t)}` + (out ? ` · not in the free ${cap} s video` : ''); d.append(im, fmtT1(t)); d.dataset.k = k; if (out) { d.style.opacity = '0.4'; d.dataset.out = '1'; } else nIn++; box.append(d); });
   if (cap > 0 && nIn < P.shots.length) $('mvNote').textContent += ` · the free ${cap} s video has the first ${nIn}`;
   $('mvBack').disabled = !S.mv.hist.length; mvShotNow = -1;
@@ -1100,20 +1131,25 @@ let mvShotNow = -1;
 function markShot(k) { if (k === mvShotNow) return; mvShotNow = k; const box = $('mvShots'); for (const d of box.children) d.classList.toggle('now', +d.dataset.k === k); }
 function buildMvArts() {
   const box = $('mvArts'); box.innerHTML = '';
-  for (const [id, name] of GroklyArt.ART) { const b = document.createElement('button'), im = document.createElement('img'); im.src = `art/_thumbs/${id}.jpg`; im.alt = name + ', generative artwork by Reza Milani'; im.loading = 'lazy'; const lab = document.createElement('span'); lab.textContent = name; lab.setAttribute('aria-hidden', 'true'); b.append(im, lab); b.dataset.a = id;
+  const tog = (id) => { const i = S.mv.arts.indexOf(id); if (i >= 0) S.mv.arts.splice(i, 1); else if (S.mv.arts.length < 6) S.mv.arts.push(id); else { $('mvCount').textContent = 'Up to 6 artworks. Remove one first.'; return; } markMvArts(); mvRebuild(); };
+  { const sets = $('mvSets'), grid = $('mvNyc'); const fill = () => { grid.innerHTML = ''; grid.hidden = !mvSet; if (!mvSet) return; for (const x of GroklyArt.NYC) if (x.set === mvSet) { const t = nycTile(x, 'art', S.mv.arts.includes(x.id), () => tog(x.id)); t.dataset.a = x.id; grid.append(t); } };
+    if (!mvSet) { const used = S.mv.arts.map((a) => GroklyArt.nycNum(a)).find((n) => n); if (used) mvSet = GroklyArt.NYC[used - 1].set; }
+    nycSetButtons(sets, mvSet, false, (k) => { mvSet = mvSet === k ? '' : k; if (!mvSet) [...sets.children].forEach((x) => x.setAttribute('aria-pressed', 'false')); fill(); }); fill(); }
+  for (const [id, name] of GroklyArt.ORIGINAL) { const b = document.createElement('button'), im = document.createElement('img'); im.src = `art/_thumbs/${id}.jpg`; im.alt = name + ', generative artwork by Reza Milani'; im.loading = 'lazy'; const lab = document.createElement('span'); lab.textContent = name; lab.setAttribute('aria-hidden', 'true'); b.append(im, lab); b.dataset.a = id;
     b.setAttribute('aria-pressed', String(S.mv.arts.includes(id)));
-    b.onclick = () => { const i = S.mv.arts.indexOf(id); if (i >= 0) S.mv.arts.splice(i, 1); else if (S.mv.arts.length < 6) S.mv.arts.push(id); else { $('mvCount').textContent = 'Up to 6 artworks. Remove one first.'; return; } markMvArts(); mvRebuild(); };
+    b.onclick = () => tog(id);
     box.append(b); }
   markMvArts();
 }
 // a tap only updates the buttons' state; the grid itself is built once
 function markMvArts() {
-  for (const b of $('mvArts').children) b.setAttribute('aria-pressed', String(S.mv.arts.includes(b.dataset.a)));
+  for (const b of [...$('mvArts').children, ...$('mvNyc').children]) b.setAttribute('aria-pressed', String(S.mv.arts.includes(b.dataset.a)));
   $('mvCount').textContent = S.mv.arts.length >= 2 ? `${S.mv.arts.length} artworks` : S.mv.arts.length ? 'Pick at least one more (or Milani picks 4 for you).' : 'None picked: Milani picks 4 for you.';
 }
 $('mvPick').onclick = () => { S.mv.seed = (Math.random() * 2 ** 31) >>> 0; S.mv.arts = mvAuto(S.mv.seed); buildMvArts(); mvRebuild(true); };
 segGroup('mvStyle', 'v', (v) => { S.mv.style = v; mvRebuild(); });
 segGroup('mvTrans', 'v', (v) => { S.mv.trans = v; mvRebuild(); });
+segGroup('mvPulse', 'v', (v) => { S.mv.pulse = v === 'pulse'; mvRebuild(); });
 $('mvGen').onclick = () => { S.mv.hist.push(S.mv.seed); if (S.mv.hist.length > 20) S.mv.hist.shift(); S.mv.seed = (Math.random() * 2 ** 31) >>> 0; mvRebuild(true); };
 $('mvBack').onclick = () => { if (!S.mv.hist.length) return; S.mv.seed = S.mv.hist.pop(); mvRebuild(true); };
 function setMode(m, quiet) {
@@ -1121,7 +1157,7 @@ function setMode(m, quiet) {
   $('mvTab').hidden = !mus; $('h-sound').textContent = mus ? '1 · Your music' : '1 · Your sound'; $('rec').hidden = mus;
   $('upload').lastChild.textContent = mus ? 'Upload music' : 'Upload audio or video';
   $('audioC').hidden = mus; // Polish my voice and Trim silences are voice tools
-  if (mus && !quiet && S.style !== 'full') { S.voiceStyle = S.style; selectStyle('full'); } // the artwork is the hero: Full picture (any template can still be picked)
+  if (mus && !quiet && !isFull(S.style)) { S.voiceStyle = S.style; selectStyle('full'); } // the artwork is the hero: Full picture (any template can still be picked)
   if (!mus && !quiet && S.style === 'full' && S.voiceStyle) { selectStyle(S.voiceStyle); S.voiceStyle = null; }
   updateTrimBox(); updateCapNote();
   if (mus && !quiet) { // music already has music: no background music, and no voice polish by default (export is set to −14 LUFS instead)
@@ -1130,7 +1166,7 @@ function setMode(m, quiet) {
     document.querySelector('.tools [data-p="mv"]').click();
   }
   if (!mus) { pvMix.destroy(); pvMix.__key = ''; S.mvPlan = null; if (!$('p-mv').hidden) document.querySelector('.tools [data-p="tpl"]').click(); }
-  setSeg('mvStyle', 'v', S.mv.style); setSeg('mvTrans', 'v', S.mv.trans); buildMvArts(); saveState();
+  setSeg('mvStyle', 'v', S.mv.style); setSeg('mvTrans', 'v', S.mv.trans); setSeg('mvPulse', 'v', S.mv.pulse ? 'pulse' : 'still'); buildMvArts(); saveState();
   if (mus) mvRebuild(true); else setupPreview();
 }
 segGroup('mode', 'm', (v) => setMode(v));
@@ -1145,7 +1181,7 @@ let lastI = 0, sel = null, drag = null, subCheck = true;
 // "Plain" subtitles over an artwork / background image / Full picture: if the text colour reaches < 4.5:1 against the 10th-percentile pixel
 // under the subtitle area, switch the look to Box (spec colour-harmony 4.3) and say why
 function checkSubsOverPicture() {
-  if (!subCheck || !subsBox || S.subLook !== 'plain' || !(picIsArt() || S.bgImage || S.style === 'full')) return; subCheck = false;
+  if (!subCheck || !subsBox || S.subLook !== 'plain' || !(picIsArt() || S.bgImage || isFull(S.style))) return; subCheck = false;
   try { const g = pv.cv.getContext('2d'), b = subsBox, d = g.getImageData(Math.max(0, b.x | 0), Math.max(0, b.y | 0), Math.max(1, b.w | 0), Math.max(1, b.h | 0)).data, txt = S.subColor && S.subColor !== 'auto' ? S.subColor : S.ink || '#ffffff', rs = [];
     for (let k = 0; k < d.length; k += 4 * 7) rs.push(GC.contrast(txt, '#' + [d[k], d[k + 1], d[k + 2]].map((v) => v.toString(16).padStart(2, '0')).join('')));
     rs.sort((a, b2) => a - b2); if (rs.length && rs[Math.floor(rs.length * 0.1)] < 4.5) { S.subLook = 'box'; setSeg('subLook', 'v', 'box'); saveState(); $('sttNote').textContent = 'The subtitles were hard to read over the picture, so they now have a box (Look: Box).'; }
@@ -1328,7 +1364,7 @@ $('resetLayout').onclick = () => { delete S.layout[layoutKey()]; if (S.boxPics[l
 let ac = null, src = null, t0 = 0, raf = 0;
 let idleI = 0, idleNext = 0;
 function idleTick(ts) {
-  if (!src && (picIsArt() || mvOn()) && !document.hidden && S.feats && ts >= idleNext) {
+  if (!src && (picIsArt() || isCover(S.style) || mvOn()) && !document.hidden && S.feats && ts >= idleNext) {
     const c0 = performance.now(); if (mvOn()) { if (pvMix.dirty) drawPreview(Math.round(pausedAt * FPS)); } /* Music video, paused: redraw only when an artwork finished loading */ else { idleI = (idleI + 1) % S.feats.length; drawPreview(idleI); } idleNext = ts + Math.max(33, (performance.now() - c0) * 3);
   }
   requestAnimationFrame(idleTick);
@@ -1374,7 +1410,8 @@ document.querySelector('.tools[role=tablist]').addEventListener('keydown', (e) =
   if (n === null) return; e.preventDefault(); const t = tabs[(n + tabs.length) % tabs.length]; t.focus(); t.click();
 });
 function selectStyle(id) {
-  S.style = id; sel = null; store.set('grokly.style', id);
+  if (isCover(id)) { const x = GroklyArt.NYC[coverNum(id) - 1]; if (x && S.fmt !== x.fmt) { S.fmt = x.fmt; setSeg('fmt', 'f', S.fmt); } }
+  S.style = id; sel = null; store.set('grokly.style', id); markCovers();
   document.querySelectorAll('.styles .chip').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.s === id))); setupPreview();
 }
 async function buildChips() {
@@ -1386,7 +1423,7 @@ async function buildChips() {
   }
   const sample = { ...idle, pulse: .5, bands: idle.bands.map((b, i) => Math.min(1, b + .35 * Math.abs(Math.sin(i * 1.3)))) };
   const tw = document.createElement('canvas'), tc = document.createElement('canvas'), tf = document.createElement('canvas'), ew = E.makeWave(tw), ec = E.makeCards(tc), ef = GroklyArt.makeFull(tf);
-  const thumbPic = isDrawing() ? drawThumb : picIsArt() ? `art/_thumbs/${S.pic.id}.jpg` : S.avatar;
+  const thumbPic = isDrawing() ? drawThumb : picIsArt() ? thumbSrc(S.pic.id) : S.avatar;
   for (const b of document.querySelectorAll('.styles .chip')) {
     const id = b.dataset.s, card = isCard(id), e = card ? ec : id === 'full' ? ef : ew, cv = card ? tc : id === 'full' ? tf : tw, sz = card ? CARD_SIZE[cardFmt(id)] : FMT.post;
     await e.setup({ style: id.replace('card:', ''), title: 'The Sound of Rain', sub: 'Subtitle', avatar: id === 'full' ? thumbPic : S.avatar, bgImage: picIsArt() ? thumbPic : S.bgImage, guest: S.guest, theme: S.bg && luminance(S.bg) > 0.5 ? 'light' : 'dark', paper: S.bg, ink: S.ink, accent: S.acc, W: sz[0] / 4, H: sz[1] / 4, keepSize: true, seed: 7, watermark: '' });
@@ -1401,7 +1438,7 @@ segGroup('fmt', 'f', (v) => { S.fmt = v; sel = null; setupPreview(); });
 function buildArtChips() {
   const box = $('artGrid'); box.innerHTML = '';
   // three groups; any artwork not listed in a group goes to the last one
-  const listed = ART_GROUPS.flatMap((g) => g[1]), all = GroklyArt.ART.map(([x]) => x);
+  const listed = ART_GROUPS.flatMap((g) => g[1]), all = GroklyArt.ORIGINAL.map(([x]) => x);
   const groups = ART_GROUPS.map(([n, ids], i) => [n, ids.filter((x) => all.includes(x)).concat(i === ART_GROUPS.length - 1 ? all.filter((x) => !listed.includes(x)) : [])]);
   { // Draw your own: the pen opens the editor; the visitor's drawing (once made) is an artwork like the others
     const h = document.createElement('div'); h.className = 'artcat'; h.textContent = 'Your own'; box.append(h);
@@ -1419,14 +1456,39 @@ function buildArtChips() {
     b.onclick = () => pickArt(id); box.append(b);
    }
   }
+  { // the NYC pack's 320 generative codes, one kind at a time
+    const h = document.createElement('div'); h.className = 'artcat'; h.textContent = 'Generative codes · NYC pack'; box.append(h);
+    const sets = document.createElement('div'); sets.className = 'nycsets'; box.append(sets);
+    const grid = document.createElement('div'); grid.className = 'nycart'; box.append(grid);
+    const cur = picIsArt() && GroklyArt.nycNum(S.pic.id) ? GroklyArt.NYC[GroklyArt.nycNum(S.pic.id) - 1] : null; if (cur) artSet = cur.set;
+    const fill = () => { grid.innerHTML = ''; for (const x of GroklyArt.NYC) if (x.set === artSet) { const t = nycTile(x, 'art', picIsArt() && S.pic.id === x.id, () => pickArt(x.id)); t.classList.add('chip'); t.dataset.a = x.id; grid.append(t); } };
+    nycSetButtons(sets, artSet, false, (k) => { artSet = k; fill(); }); fill();
+  }
 }
+// ---------- the NYC pack: Generative covers (Template tab), its generative codes (Art tab and music video) ----------
+let coverSet = 'all', artSet = 'a', mvSet = '';
+function nycSetButtons(box, cur, withAll, onPick) {
+  box.innerHTML = '';
+  for (const [k, name] of [...(withAll ? [['all', 'All']] : []), ...GroklyArt.NYC_SETS]) { const b = document.createElement('button'); b.type = 'button'; b.textContent = name; b.dataset.k = k; b.setAttribute('aria-pressed', String(k === cur)); b.onclick = () => { [...box.children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); onPick(k); }; box.append(b); }
+}
+function nycTile(x, kind, pressed, onClick) {
+  const b = document.createElement('button'); b.type = 'button'; b.dataset.n = x.n; b.title = `${x.name} (${x.fmt === 'wide' ? '16:9' : 'square'})`; b.setAttribute('aria-pressed', String(pressed));
+  const i = document.createElement('i'); i.setAttribute('style', GroklyArt.thumbCSS(x.n, kind)); i.setAttribute('aria-hidden', 'true');
+  const l = document.createElement('span'); l.textContent = x.name.split(' · ')[0]; b.setAttribute('aria-label', x.name + ', number ' + x.n); b.append(i, l); b.onclick = onClick; return b;
+}
+function buildCovers() {
+  nycSetButtons($('coverSets'), coverSet, true, (k) => { coverSet = k; buildCovers(); });
+  const box = $('coverGrid'); box.innerHTML = '';
+  for (const x of GroklyArt.NYC) if (coverSet === 'all' || x.set === coverSet) box.append(nycTile(x, 'cover', S.style === 'cover:' + x.n, () => selectStyle('cover:' + x.n)));
+}
+function markCovers() { for (const b of $('coverGrid').children) b.setAttribute('aria-pressed', String(S.style === 'cover:' + b.dataset.n)); }
 const ART_GROUPS = [
   ['Rivers & Trees', ['night-river', 'spring-behind-the-river-v', 'the-last-flower', 'old-tree']],
   ['Fields & Hills', ['dusk-hills', 'a-field-in-the-wind', 'poppy-map', 'fern']],
   ['Abstract', ['garden-lights', 'emotions', 'imago', 'hart', 'muz-ii', 'paris']],
 ];
 const SLOW_ART = ['aviary', 'a-field-in-the-wind', 'muz-ii', 'feelings', 'violet-tree', 'old-tree'];
-function pickArt(id) { S.pic = { kind: 'art', id }; S.lastArt = id; idleI = 0; store.set('grokly.pic', id); setupPreview(); buildChips(); }
+function pickArt(id) { S.pic = { kind: 'art', id }; S.lastArt = id; idleI = 0; store.set('grokly.pic', id); if (isCover(S.style)) selectStyle('full'); else setupPreview(); buildChips(); } // an artwork is a picture: a cover design gives way to Full
 function usePhoto() { S.pic = { kind: 'photo' }; store.set('grokly.pic', ''); setupPreview(); buildChips(); }
 $('usePhoto').onclick = usePhoto;
 // Generate: a brand-new version of the chosen artwork; Back walks through earlier ones.
@@ -1460,7 +1522,7 @@ function swatches(id, key, withAuto, onPick) {
 }
 const typing = {}; ['title', 'name', 'guestName'].forEach((id) => { // one save timer per field, so a quick switch between fields never drops a save
   const save = () => { clearTimeout(typing[id]); typing[id] = 0; store.set('grokly.' + id, $(id).value); };
-  $(id).oninput = () => { clearTimeout(typing[id]); typing[id] = setTimeout(() => { save(); setupPreview(); }, 150); };
+  $(id).oninput = () => { clearTimeout(typing[id]); typing[id] = setTimeout(() => { save(); setupPreview(); }, isCover(S.style) ? 600 : 150); };
   $(id).addEventListener('change', save); addEventListener('pagehide', () => { if (typing[id]) save(); });
 });
 $('textSize').oninput = (e) => { S.textScale = e.target.value / 100; $('textSizeVal').textContent = e.target.value + '%'; setupPreview(); };
@@ -1493,7 +1555,7 @@ $('bgFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''
 $('bgRemove').onclick = () => { S.bgImage = null; keep('grokly.bgimg', ''); photoNote(''); showBg(); setupPreview(); buildChips(); };
 $('dice').onclick = () => {
   const all = [...CARDS.map(([n]) => 'card:' + n), ...WAVES], pick = (a) => a[Math.floor(Math.random() * a.length)];
-  let st; do st = pick(all); while (st === S.style);
+  let st; do st = Math.random() < 0.3 ? 'cover:' + pick(GroklyArt.NYC.filter((x) => x.set !== 'f')).n : pick(all); while (st === S.style); // sometimes one of the generative covers (not the heavier WebGL set)
   S.font = pick(FONTS)[0]; pickFont('titleFont', S.font);
   surpriseColours(false); uiSound('surprise');
   selectStyle(st);
@@ -1671,7 +1733,7 @@ $('cancelMake').onclick = $('pillCancel').onclick = () => { if (job) { job.cance
 const pillText = (t) => { $('pillText').textContent = t + (queue.length ? ` · ${queue.length} waiting` : ''); };
 $('make').onclick = () => {
   if (S.q > 1440 && !(window.GroklyPass && GroklyPass.allows4k())) { S.q = 1440; setSeg('quality', 'q', 1440); saveState(); } // Grokly Pass: 4K only for Touch of the Moment minters
-  const J = { snap: { ...S, subs: S.subs.map((x) => ({ ...x })), layout: JSON.parse(JSON.stringify(S.layout)), pic: { ...S.pic }, artSeeds: { ...S.artSeeds } }, q: S.q, kind: kindOf(S.style), art: picIsArt() && !mvOn(), fades: selFades() };
+  const J = { snap: { ...S, subs: S.subs.map((x) => ({ ...x })), layout: JSON.parse(JSON.stringify(S.layout)), pic: { ...S.pic }, artSeeds: { ...S.artSeeds } }, q: S.q, kind: kindOf(S.style), art: (picIsArt() || isCover(S.style)) && !mvOn(), fades: selFades() };
   J.o = opts(J.q / 1080); J.o1080 = opts(1); J.o.layout = J.o1080.layout = J.snap.layout[layoutKey(J.snap)] || {}; // the layout as it was at the click
   J.rtCtx = new (window.AudioContext || window.webkitAudioContext)(); J.rtCtx.resume(); // must start inside the tap for Safari
   // Slow artworks: ask once, now, for a job that will wait in the queue; a queued job never stops to ask. Clips under 10 s never ask.
@@ -1768,7 +1830,7 @@ async function runJob(J) {
     }
     if (!blob) throw firstErr || new Error('the video came out empty');
     prog(1);
-    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm', fname = `milani-${snap.style.replace('card:', '')}${picIsArtSnap ? '-' + snap.pic.id : ''}-${new Date().toISOString().slice(0, 10)}-${q}p.${ext}`;
+    const ext = blob.type.includes('mp4') ? 'mp4' : 'webm', fname = `milani-${snap.style.replace('card:', '')}${picIsArtSnap ? (isCover(snap.style) ? '-cover-' + coverNum(snap.style) : '-' + snap.pic.id) : ''}-${new Date().toISOString().slice(0, 10)}-${q}p.${ext}`;
     if (lastURL) { $('out').removeAttribute('src'); $('out').load(); URL.revokeObjectURL(lastURL); } // the previous video is replaced only now
     lastURL = URL.createObjectURL(blob);
     $('out').src = lastURL; $('save').href = lastURL; $('save').download = fname;
@@ -1854,7 +1916,7 @@ $('paintDone').onclick = () => {
   useDrawing(d); const j = JSON.stringify(d); if (j.length < 1.5e6) store.set('grokly.drawing', j);
   if (mvOn()) setMode('voice', true); // a music video cuts between Milani's artworks; the drawing plays as one picture
   S.pic = { kind: 'art', id: 'drawing' }; idleI = 0; store.set('grokly.pic', 'drawing'); buildArtChips();
-  if (S.style !== 'full') selectStyle('full'); else setupPreview(); // the drawing fills the frame; any other template can still be picked
+  if (!isFull(S.style) || isCover(S.style)) selectStyle('full'); else setupPreview(); // the drawing fills the frame; any other template can still be picked
   buildChips(); uiSound('surprise');
 };
 $('drawOpen').onclick = openPaint;
@@ -1872,7 +1934,7 @@ $('drawOpen').onclick = openPaint;
     const ok = { fmt: FMT[v.fmt] ? v.fmt : undefined, bg: col(v.bg), ink: col(v.ink), acc: col(v.acc), font: FONTS.some(([f]) => f === v.font) ? v.font : undefined, subFont: FONTS.some(([f]) => f === v.subFont) ? v.subFont : undefined,
       textScale: num(v.textScale, 0.6, 1.6), subScale: num(v.subScale, 0.6, 1.8), subPos: ['auto', 'top', 'middle', 'bottom'].includes(v.subPos) ? v.subPos : undefined, subLook: ['box', 'outline', 'plain'].includes(v.subLook) ? v.subLook : undefined,
       subColor: v.subColor === 'auto' || /^#[0-9a-f]{6}$/i.test(v.subColor || '') ? v.subColor : undefined, q: [720, 1080, 1440, 2160].includes(v.q) ? v.q : undefined, artSeeds: obj(v.artSeeds), artHist: obj(v.artHist), artVers: obj(v.artVers), lastArt: typeof v.lastArt === 'string' ? v.lastArt : undefined, colourSeed: Number.isInteger(v.colourSeed) ? v.colourSeed : undefined, mode: v.mode === 'music' ? 'music' : undefined, wmStyle: v.wmStyle === 'sig' || v.wmStyle === 'text' ? v.wmStyle : undefined,
-      mv: obj(v.mv) ? { arts: Array.isArray(v.mv.arts) ? v.mv.arts.filter((x) => GroklyArt.ART.some(([id]) => id === x)).slice(0, 6) : [], style: ['calm', 'pulse', 'fast'].includes(v.mv.style) ? v.mv.style : 'calm', trans: v.mv.trans === 'xfade' ? 'xfade' : 'cut', seed: Number.isInteger(v.mv.seed) ? v.mv.seed : 1, hist: Array.isArray(v.mv.hist) ? v.mv.hist.filter(Number.isInteger).slice(-20) : [] } : undefined,
+      mv: obj(v.mv) ? { arts: Array.isArray(v.mv.arts) ? v.mv.arts.filter((x) => GroklyArt.ART.some(([id]) => id === x)).slice(0, 6) : [], style: ['calm', 'pulse', 'fast'].includes(v.mv.style) ? v.mv.style : 'calm', trans: ['xfade', 'mix'].includes(v.mv.trans) ? v.mv.trans : 'cut', pulse: v.mv.pulse === true, seed: Number.isInteger(v.mv.seed) ? v.mv.seed : 1, hist: Array.isArray(v.mv.hist) ? v.mv.hist.filter(Number.isInteger).slice(-20) : [] } : undefined,
       layout: obj(v.layout) && Object.fromEntries(Object.entries(v.layout).filter(([, m]) => obj(m)).map(([k, m]) => [k, Object.fromEntries(Object.entries(m).filter(([, o]) => o && typeof o === 'object' && Math.abs(o.x || 0) <= 1 && Math.abs(o.y || 0) <= 1 && (o.s == null || (o.s >= 0.2 && o.s <= 4)) && (o.hide == null || typeof o.hide === 'boolean')))])) };
     for (const k in ok) if (ok[k] !== undefined) S[k] = ok[k];
   } catch {}
@@ -1881,13 +1943,13 @@ $('drawOpen').onclick = openPaint;
   $('soundName').dir = 'auto';
   const all = [...CARDS.map(([n]) => 'card:' + n), ...WAVES], arts = GroklyArt.ART.map(([id]) => id);
   let st = store.get('grokly.style'); if (st && st.startsWith('art:')) { store.set('grokly.pic', st.slice(4)); st = 'full'; }
-  if (st && all.includes(st)) S.style = st;
+  if (st && (all.includes(st) || (isCover(st) && coverNum(st) >= 1 && coverNum(st) <= GroklyArt.NYC.length))) S.style = st;
   { let d = null; try { d = MilaniDraw.clean(JSON.parse(store.get('grokly.drawing') || 'null')); } catch {} if (d && d.strokes.length) useDrawing(d); } // Draw your own
   try { const v = JSON.parse(store.get('grokly.boxpics') || '{}'); if (v && typeof v === 'object') for (const k in v) { const m = v[k]; if (!m || typeof m !== 'object') continue; for (const id in m) if (/^data:image\/(jpeg|png|webp);base64,/.test(m[id] || '')) (S.boxPics[k] = S.boxPics[k] || {})[id] = m[id]; } } catch {}
   await Promise.all(Object.values(S.boxPics).flatMap((m) => Object.values(m)).map((d) => new Promise((r) => { const im = new Image(); im.onload = () => { boxImgs.set(d, im); r(); }; im.onerror = r; im.src = d; })));
   const sp = store.get('grokly.pic'); if (sp && (arts.includes(sp) || (sp === 'drawing' && S.drawing))) S.pic = { kind: 'art', id: sp };
   const qa = new URLSearchParams(location.search).get('art'); if (qa && arts.includes(qa)) S.pic = { kind: 'art', id: qa };
-  const q = new URLSearchParams(location.search).get('style'); if (q) { const m = all.includes('card:' + q) ? 'card:' + q : all.includes(q) ? q : null; if (m) S.style = m; }
+  const q = new URLSearchParams(location.search).get('style'); if (q) { const m = all.includes('card:' + q) ? 'card:' + q : all.includes(q) ? q : /^cover:\d+$/.test(q) && coverNum(q) <= GroklyArt.NYC.length ? q : null; if (m) S.style = m; }
   const tab = store.get('grokly.tab'); if (tab && $('p-' + tab)) document.querySelector(`.tools [data-p="${tab}"]`).click();
   fontButtons('titleFont', 'font'); fontButtons('subFont', 'subFont'); refreshSwatches(); buildPresets(); markPreset();
   const sc = $('subColor'); ['auto', '#ffffff', '#ffe066', '#9be7ff', '#ffb3a7', '#15252c'].forEach((c) => { const b = document.createElement('button'); b.style.background = c === 'auto' ? 'conic-gradient(#e2614f,#0099cc,#87a29a,#e2614f)' : c; b.setAttribute('aria-label', c === 'auto' ? 'Automatic (follows the Colour tool)' : c); b.setAttribute('aria-pressed', String(c === S.subColor)); b.onclick = () => { S.subColor = c; [...sc.children].forEach((x) => x.setAttribute('aria-pressed', String(x === b))); drawPreview(curFrame()); saveState(); }; sc.append(b); });
@@ -1895,7 +1957,7 @@ $('drawOpen').onclick = openPaint;
   S.full = await sampleBeat(); S.pcm = S.full; S.feats = E.analyze(S.pcm, FPS); S.subs = SAMPLE_SUBS.map((s) => ({ ...s, sample: true })); renderLines(); drawWave();
   setSeg('mvStyle', 'v', S.mv.style); setSeg('mvTrans', 'v', S.mv.trans); buildMvArts();
   { const qm = new URLSearchParams(location.search).get('mode'); if (qm === 'music') setMode('music'); else if (qm === 'voice' && S.mode !== 'voice') setMode('voice'); else if (S.mode === 'music') setMode('music', true); } // ?mode=voice or ?mode=music opens that editor; a saved music video still comes back after a reload
-  buildArtChips(); await setupPreview(); drawPreview(40); buildChips(); requestAnimationFrame(idleTick);
+  buildArtChips(); buildCovers(); await setupPreview(); drawPreview(40); buildChips(); requestAnimationFrame(idleTick);
   // before any export: say so if this browser can't make MP4 (X, Instagram and TikTok need it)
   (async () => { try { const ok = (await pickVideoCodec(1080, 1350)) && (await aacOK()); $('mp4Note').hidden = !!ok; } catch { $('mp4Note').hidden = false; } })();
   if (coarse) $('layoutTip').textContent = 'Tip: tap an item on the preview to select it, then drag, pinch, or use its × (delete), + (duplicate) and corner handle. Swipe anywhere else to scroll.';
